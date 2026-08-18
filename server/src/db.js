@@ -9,12 +9,12 @@ const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
+  options: '-c search_path=erp_app,public',
 });
 
-pool.on('connect', async (client) => {
-  await client.query('CREATE SCHEMA IF NOT EXISTS erp_app');
-  await client.query('SET search_path TO erp_app, public');
-});
+async function ensureSchema(conn) {
+  await conn.query('CREATE SCHEMA IF NOT EXISTS erp_app');
+}
 
 function convertPlaceholders(sql) {
   let idx = 0;
@@ -133,6 +133,7 @@ export const query = execQuery;
 async function migrate() {
   const conn = await pool.connect();
   try {
+    await ensureSchema(conn);
     await conn.query(`CREATE TABLE IF NOT EXISTS suppliers (
       id SERIAL PRIMARY KEY,
       name VARCHAR(150) NOT NULL,
