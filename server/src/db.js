@@ -3,12 +3,17 @@ import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
-const DB_URL = process.env.DATABASE_URL || 'postgresql://factory_manager_user:apDO6DzshNP0oLCKmACPunlg53BX0W97@dpg-da2crt15efls73a0lhn0-a/erp_app';
+const DB_URL = process.env.DATABASE_URL || 'postgresql://factory_manager_user:apDO6DzshNP0oLCKmACPunlg53BX0W97@dpg-da2crt15efls73a0lhn0-a/factory_manager';
 
 const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
+});
+
+pool.on('connect', async (client) => {
+  await client.query('CREATE SCHEMA IF NOT EXISTS erp_app');
+  await client.query('SET search_path TO erp_app, public');
 });
 
 function convertPlaceholders(sql) {
