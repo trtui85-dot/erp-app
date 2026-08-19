@@ -464,7 +464,83 @@ async function migrate() {
         ('Légumes', 'الخضروات', '🥬', '#22c55e', 1),
         ('Denrées alimentaires', 'المواد الغذائية', '🌾', '#f59e0b', 2),
         ('Viandes', 'اللحوم', '🥩', '#ef4444', 3),
+        ('Fruits', 'الفواكه', '🍎', '#f97316', 4),
+        ('Épices & Condiments', 'التوابل والبهارات', '🧂', '#8b5cf6', 5),
+        ('Produits laitiers', 'منتجات الألبان', '🧀', '#06b6d4', 6),
         ('Autres', 'أخرى', '📦', '#6b7280', 99)
+      `);
+    }
+
+    const prodCheck = await conn.query('SELECT COUNT(*) AS c FROM products');
+    if (Number(prodCheck.rows[0].c) === 0) {
+      await conn.query(`INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES
+        ('Tomates', 'kg', 'fixed', 350, 20, 5, 1),
+        ('Oignons', 'kg', 'fixed', 200, 30, 14, 1),
+        ('Pommes de terre', 'kg', 'fixed', 250, 40, 21, 1),
+        ('Carottes', 'kg', 'fixed', 300, 15, 10, 1),
+        ('Concombres', 'kg', 'fixed', 280, 20, 5, 1),
+        ('Poivrons', 'kg', 'fixed', 400, 10, 7, 1),
+        ('Aubergines', 'kg', 'fixed', 320, 15, 5, 1),
+        ('Haricots verts', 'kg', 'fixed', 450, 10, 7, 1),
+        ('Choux', 'kg', 'fixed', 180, 20, 10, 1),
+        ('Laitue', 'pièce', 'fixed', 100, 30, 3, 1),
+        ('Riz importé', 'kg', 'fixed', 500, 50, 365, 2),
+        ('Sucre', 'kg', 'fixed', 400, 40, 365, 2),
+        ('Huile végétale', 'litre', 'fixed', 600, 30, 180, 2),
+        ('Farine', 'kg', 'fixed', 280, 50, 180, 2),
+        ('Pâtes alimentaires', 'kg', 'fixed', 350, 30, 365, 2),
+        ('Couscous', 'kg', 'fixed', 450, 25, 365, 2),
+        ('Thé vert', 'kg', 'fixed', 2000, 10, 365, 2),
+        ('Café torréfié', 'kg', 'fixed', 3500, 5, 180, 2),
+        ('Poulet entier', 'kg', 'variable', 1200, 20, 3, 3),
+        ('Bœuf haché', 'kg', 'variable', 2500, 15, 2, 3),
+        ('Agneau', 'kg', 'variable', 3000, 10, 2, 3),
+        ('Poisson frais', 'kg', 'variable', 1800, 15, 2, 3),
+        ('Œufs', 'pièce', 'fixed', 15, 100, 21, 3),
+        ('Pommes', 'kg', 'fixed', 400, 20, 14, 4),
+        ('Oranges', 'kg', 'fixed', 300, 25, 14, 4),
+        ('Bananes', 'kg', 'fixed', 350, 20, 5, 4),
+        ('Citrons', 'kg', 'fixed', 250, 15, 21, 4),
+        ('Mangue', 'kg', 'variable', 500, 10, 5, 4),
+        ('Beurre', 'kg', 'fixed', 1500, 10, 30, 6),
+        ('Fromage blanc', 'kg', 'fixed', 800, 15, 7, 6),
+        ('Lait', 'litre', 'fixed', 350, 30, 7, 6),
+        ('Poivre noir', 'kg', 'fixed', 8000, 2, 365, 5),
+        ('Cumin', 'kg', 'fixed', 4000, 3, 365, 5),
+        ('Piment en poudre', 'kg', 'fixed', 3000, 3, 365, 5),
+        ('Sel', 'kg', 'fixed', 100, 20, 365, 5)
+      `);
+    }
+
+    const supCheck = await conn.query('SELECT COUNT(*) AS c FROM suppliers');
+    if (Number(supCheck.rows[0].c) === 0) {
+      await conn.query(`INSERT INTO suppliers (name, phone, specialty) VALUES
+        ('Mohamed Lemine', '22100123', 'Légumes & Fruits - Nouakchott'),
+        ('Fatima Bint', '22345678', 'Denrées alimentaires importées'),
+        ('Abdallahi Ould', '22567890', 'Viandes & Volailles - Riyadh'),
+        ('Mariam Cheikh', '22789012', 'Produits laitiers & Œufs'),
+        ('Sidi Ould Brahim', '22901234', 'Épices & Condiments - Souk'),
+        ('Oumar Group', '44123456', 'Import-export alimentaire'),
+        ('Fatma Import', '44789012', 'Denrées & Conserves')
+      `);
+    }
+
+    const custCheck = await conn.query('SELECT COUNT(*) AS c FROM customers');
+    if (Number(custCheck.rows[0].c) === 0) {
+      await conn.query(`INSERT INTO customers (name, phone, address) VALUES
+        ('Boutique Al Baraka', '22400100', 'Rue 10 - Nouakchott'),
+        ('Épicerie du Port', '22400200', 'Port de Nouakchott'),
+        ('Restaurant Sahara', '22400300', 'Avenue du 25 Juillet'),
+        ('Supermarché One Way', '22400400', 'One Way - Nouakchott'),
+        ('Hotel Prince', '22400500', 'CFC - Nouakchott'),
+        ('Boulangerie El Amine', '22400600', 'Tevragh Zeina'),
+        ('Café Toujours', '22400700', 'Centre Ville'),
+        ('Traiteur Mariama', '22400800', 'KSAr - Nouakchott'),
+        ('Magasin El Baraka', '22400900', 'Sebkha - Nouakchott'),
+        ('Halal Market', '22401000', 'Arafat - Nouakchott'),
+        ('Petit Commerce Issa', '22401100', 'Dar Naim'),
+        ('Restaurant Al Ousra', '22401200', 'El Mina'),
+        ('Grossiste Dia', '22401300', 'Marché Capitale')
       `);
     }
 
