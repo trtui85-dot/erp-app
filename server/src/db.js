@@ -544,6 +544,62 @@ async function migrate() {
       `);
     }
 
+    const batchCheck = await conn.query('SELECT COUNT(*) AS c FROM batches');
+    if (Number(batchCheck.rows[0].c) === 0) {
+      const products = await conn.query('SELECT id, name, unit, current_sale_price, shelf_life_days FROM products ORDER BY id');
+      const suppliers = await conn.query('SELECT id FROM suppliers ORDER BY id');
+
+      const purchasePrices = {
+        'Tomates': 150, 'Oignons': 80, 'Pommes de terre': 100, 'Carottes': 120, 'Concombres': 110,
+        'Poivrons': 180, 'Aubergines': 130, 'Haricots verts': 200, 'Choux': 70, 'Laitue': 40,
+        'Riz importé': 350, 'Sucre': 280, 'Huile végétale': 450, 'Farine': 180, 'Pâtes alimentaires': 220,
+        'Couscous': 300, 'Thé vert': 1200, 'Café torréfié': 2200,
+        'Poulet entier': 700, 'Bœuf haché': 1600, 'Agneau': 2000, 'Poisson frais': 1100, 'Œufs': 8,
+        'Pommes': 250, 'Oranges': 150, 'Bananes': 200, 'Citrons': 120, 'Mangue': 300,
+        'Beurre': 900, 'Fromage blanc': 500, 'Lait': 220,
+        'Poivre noir': 5000, 'Cumin': 2500, 'Piment en poudre': 1800, 'Sel': 40
+      };
+
+      const today = new Date().toISOString().split('T')[0];
+
+      for (let i = 0; i < products.rows.length; i++) {
+        const p = products.rows[i];
+        const suppIdx = i % suppliers.rows.length;
+        const qty = 150 + Math.floor(Math.random() * 200);
+        const purPrice = purchasePrices[p.name] || 100;
+        const salePrice = p.current_sale_price || purPrice * 1.5;
+        const supplierId = suppliers.rows[suppIdx].id;
+
+        const invResult = await conn.query(
+          `INSERT INTO supply_invoices (supplier_id, date, total, notes, created_by) VALUES ($1, $2, $3, $4, 1) RETURNING id`,
+          [supplierId, today, qty * purPrice, 'Approvisionnement initial - ' + p.name]
+        );
+        const invId = invResult.rows[0].id;
+
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + (p.shelf_life_days || 7));
+
+        const batchResult = await conn.query(
+          `INSERT INTO batches (batch_code, product_id, supplier_id, arrival_date, initial_qty, remaining_qty, unit, purchase_price, sale_price, expiry_date, status)
+           VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, 'active') RETURNING id`,
+          [
+            'B-' + today + '-' + String(i + 1).padStart(3, '0'),
+            p.id, supplierId, today, qty, p.unit || 'kg',
+            purPrice, salePrice, expiryDate.toISOString().split('T')[0]
+          ]
+        );
+        const batchId = batchResult.rows[0].id;
+
+        await conn.query(
+          `INSERT INTO supply_invoice_items (invoice_id, product_id, qty, unit, purchase_price, sale_price, expiry_date, batch_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [invId, p.id, qty, p.unit || 'kg', purPrice, salePrice, expiryDate.toISOString().split('T')[0], batchId]
+        );
+      }
+
+      console.log('Seed: ' + products.rows.length + ' batches created');
+    }
+
     console.log('Migration completed successfully');
   } catch (err) {
     console.error('Migration error:', err);
