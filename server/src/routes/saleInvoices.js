@@ -78,7 +78,7 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
     const invoiceDate = date || new Date().toISOString().split('T')[0];
     const year = new Date(invoiceDate).getFullYear();
 
-    const [codeCount] = await conn.execute("SELECT COUNT(*) AS c FROM sale_invoices WHERE YEAR(date) = ?", [year]);
+    const [codeCount] = await conn.execute("SELECT COUNT(*) AS c FROM sale_invoices WHERE EXTRACT(YEAR FROM date) = ?", [year]);
     const seq = (codeCount[0].c || 0) + 1;
     const invoiceCode = `${seq}/${year}`;
 

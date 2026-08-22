@@ -53,6 +53,11 @@ router.post('/', requireModule('supplyInvoices'), async (req, res) => {
       return res.status(400).json({ error: 'supplier_id and items are required' });
     }
 
+    const supCheck = await conn.execute('SELECT id FROM suppliers WHERE id = ?', [supplier_id]);
+    if (supCheck[0].length === 0) {
+      return res.status(400).json({ error: 'Fournisseur introuvable (id: ' + supplier_id + ')' });
+    }
+
     let total = 0;
     for (const item of items) {
       total += (item.qty || 0) * (item.purchase_price || 0);
