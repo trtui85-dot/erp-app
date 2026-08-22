@@ -10,7 +10,7 @@ router.get('/', requireModule('suppliers'), async (req, res) => {
     return res.json(suppliers);
   } catch (err) {
     console.error('List suppliers error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -27,7 +27,7 @@ router.get('/:id', requireModule('suppliers'), async (req, res) => {
     return res.json({ ...suppliers[0], invoices });
   } catch (err) {
     console.error('Get supplier error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -45,7 +45,7 @@ router.post('/', requireModule('suppliers'), async (req, res) => {
     return res.status(201).json(supplier[0]);
   } catch (err) {
     console.error('Create supplier error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -70,7 +70,7 @@ router.patch('/:id', requireModule('suppliers'), async (req, res) => {
     return res.json(supplier[0]);
   } catch (err) {
     console.error('Update supplier error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -84,7 +84,7 @@ router.delete('/:id', requireModule('suppliers'), async (req, res) => {
     return res.json({ message: 'Supplier deleted' });
   } catch (err) {
     console.error('Delete supplier error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

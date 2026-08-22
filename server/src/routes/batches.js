@@ -17,7 +17,7 @@ router.get('/low-stock', requireModule('batches'), async (req, res) => {
     return res.json(batches);
   } catch (err) {
     console.error('Low stock error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -52,7 +52,7 @@ router.get('/', requireModule('batches'), async (req, res) => {
     return res.json(batches);
   } catch (err) {
     console.error('List batches error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -75,7 +75,7 @@ router.patch('/:id', requireModule('batches'), async (req, res) => {
     return res.json(batch[0]);
   } catch (err) {
     console.error('Update batch error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

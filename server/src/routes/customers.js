@@ -10,7 +10,7 @@ router.get('/', requireModule('customers'), async (req, res) => {
     return res.json(customers);
   } catch (err) {
     console.error('List customers error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -31,7 +31,7 @@ router.get('/:id', requireModule('customers'), async (req, res) => {
     return res.json({ ...customers[0], invoices, debts });
   } catch (err) {
     console.error('Get customer error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -49,7 +49,7 @@ router.post('/', requireModule('customers'), async (req, res) => {
     return res.status(201).json(customer[0]);
   } catch (err) {
     console.error('Create customer error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -73,7 +73,7 @@ router.patch('/:id', requireModule('customers'), async (req, res) => {
     return res.json(customer[0]);
   } catch (err) {
     console.error('Update customer error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -87,7 +87,7 @@ router.delete('/:id', requireModule('customers'), async (req, res) => {
     return res.json({ message: 'Customer deleted' });
   } catch (err) {
     console.error('Delete customer error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

@@ -15,7 +15,7 @@ router.get('/', requireModule('supplyInvoices'), async (req, res) => {
     return res.json(invoices);
   } catch (err) {
     console.error('List supply invoices error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -40,7 +40,7 @@ router.get('/:id', requireModule('supplyInvoices'), async (req, res) => {
     return res.json({ ...invoices[0], items });
   } catch (err) {
     console.error('Get supply invoice error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -102,7 +102,7 @@ router.post('/', requireModule('supplyInvoices'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Create supply invoice error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }
@@ -131,7 +131,7 @@ router.delete('/:id', requireModule('supplyInvoices'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Delete supply invoice error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }

@@ -72,7 +72,7 @@ router.get('/stats', async (req, res) => {
     });
   } catch (err) {
     console.error('Dashboard stats error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -116,7 +116,7 @@ router.get('/recent', async (req, res) => {
     return res.json(all);
   } catch (err) {
     console.error('Dashboard recent error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

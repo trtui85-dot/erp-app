@@ -10,7 +10,7 @@ router.get('/', requireModule('distributions'), async (req, res) => {
     return res.json(distributions);
   } catch (err) {
     console.error('List distributions error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -30,7 +30,7 @@ router.get('/:id', requireModule('distributions'), async (req, res) => {
     return res.json({ ...distributions[0], items });
   } catch (err) {
     console.error('Get distribution error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -76,7 +76,7 @@ router.post('/', requireModule('distributions'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Create distribution error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }
@@ -144,7 +144,7 @@ router.post('/:id/settle', requireModule('distributions'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Settle distribution error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }
@@ -172,7 +172,7 @@ router.patch('/:id', requireModule('distributions'), async (req, res) => {
     return res.json(distribution[0]);
   } catch (err) {
     console.error('Update distribution error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

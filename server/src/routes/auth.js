@@ -25,7 +25,7 @@ router.post('/login', async (req, res) => {
     return res.json({ token, user: safeUser });
   } catch (err) {
     console.error('Login error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -40,7 +40,7 @@ router.post('/refresh', authenticate, async (req, res) => {
     return res.json({ token, user: safeUser });
   } catch (err) {
     console.error('Refresh error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

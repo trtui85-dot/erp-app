@@ -14,7 +14,7 @@ router.get('/', requireAdmin, async (req, res) => {
     return res.json(settingsObj);
   } catch (err) {
     console.error('Get settings error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -42,7 +42,7 @@ router.patch('/', requireAdmin, async (req, res) => {
     return res.json(settingsObj);
   } catch (err) {
     console.error('Update settings error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

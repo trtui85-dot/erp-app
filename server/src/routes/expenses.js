@@ -10,7 +10,7 @@ router.get('/', requireModule('expenses'), async (req, res) => {
     return res.json(expenses);
   } catch (err) {
     console.error('List expenses error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -23,7 +23,7 @@ router.get('/:id', requireModule('expenses'), async (req, res) => {
     return res.json(expenses[0]);
   } catch (err) {
     console.error('Get expense error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -42,7 +42,7 @@ router.post('/', requireModule('expenses'), async (req, res) => {
     return res.status(201).json(expense[0]);
   } catch (err) {
     console.error('Create expense error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -67,7 +67,7 @@ router.patch('/:id', requireModule('expenses'), async (req, res) => {
     return res.json(expense[0]);
   } catch (err) {
     console.error('Update expense error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -81,7 +81,7 @@ router.delete('/:id', requireModule('expenses'), async (req, res) => {
     return res.json({ message: 'Expense deleted' });
   } catch (err) {
     console.error('Delete expense error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

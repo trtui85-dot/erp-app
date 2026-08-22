@@ -17,7 +17,7 @@ router.get('/history', requireModule('dailyPrices'), async (req, res) => {
     return res.json(history);
   } catch (err) {
     console.error('Price history error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -40,7 +40,7 @@ router.get('/', requireModule('dailyPrices'), async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error('List daily prices error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -80,7 +80,7 @@ router.post('/', requireModule('dailyPrices'), async (req, res) => {
     return res.status(201).json(result[0]);
   } catch (err) {
     console.error('Set daily price error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -124,7 +124,7 @@ router.post('/bulk', requireModule('dailyPrices'), async (req, res) => {
     return res.status(201).json({ updated: results.length, prices: results });
   } catch (err) {
     console.error('Bulk daily prices error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

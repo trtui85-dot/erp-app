@@ -21,7 +21,7 @@ router.get('/', requireModule('debts'), async (req, res) => {
     return res.json(debts);
   } catch (err) {
     console.error('List debts error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -45,7 +45,7 @@ router.patch('/:id', requireModule('debts'), async (req, res) => {
     return res.json(debt[0]);
   } catch (err) {
     console.error('Update debt error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -82,7 +82,7 @@ router.post('/:id/pay', requireModule('debts'), async (req, res) => {
     return res.status(201).json({ debt: updatedDebt[0], payment_id: paymentResult.insertId });
   } catch (err) {
     console.error('Pay debt error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

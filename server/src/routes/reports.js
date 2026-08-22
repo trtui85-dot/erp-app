@@ -33,7 +33,7 @@ router.get('/profit', async (req, res) => {
     return res.json(profit);
   } catch (err) {
     console.error('Profit report error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -70,7 +70,7 @@ router.get('/inventory', async (req, res) => {
     return res.json(inventory);
   } catch (err) {
     console.error('Inventory report error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -106,7 +106,7 @@ router.get('/batches-health', async (req, res) => {
     return res.json(health);
   } catch (err) {
     console.error('Batches health error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -129,7 +129,7 @@ router.get('/low-stock', async (req, res) => {
     return res.json(products);
   } catch (err) {
     console.error('Low stock report error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

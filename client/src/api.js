@@ -33,7 +33,8 @@ http.interceptors.response.use(
       setAccessToken(null);
       if (authErrorCb) authErrorCb();
     }
-    return Promise.reject(err.response?.data || err);
+    const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Erreur';
+    return Promise.reject(new Error(msg));
   }
 );
 

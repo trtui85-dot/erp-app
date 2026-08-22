@@ -19,7 +19,7 @@ router.get('/', requireModule('products'), async (req, res) => {
     return res.json(products);
   } catch (err) {
     console.error('List products error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -48,7 +48,7 @@ router.get('/:id', requireModule('products'), async (req, res) => {
     return res.json({ ...products[0], batches });
   } catch (err) {
     console.error('Get product error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -66,7 +66,7 @@ router.post('/', requireModule('products'), async (req, res) => {
     return res.status(201).json(product[0]);
   } catch (err) {
     console.error('Create product error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -94,7 +94,7 @@ router.patch('/:id', requireModule('products'), async (req, res) => {
     return res.json(product[0]);
   } catch (err) {
     console.error('Update product error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -108,7 +108,7 @@ router.delete('/:id', requireModule('products'), async (req, res) => {
     return res.json({ message: 'Product deleted' });
   } catch (err) {
     console.error('Delete product error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

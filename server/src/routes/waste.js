@@ -32,7 +32,7 @@ router.get('/', requireModule('batches'), async (req, res) => {
     return res.json(records);
   } catch (err) {
     console.error('List waste records error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -60,7 +60,7 @@ router.get('/summary', requireModule('batches'), async (req, res) => {
     return res.json(summary);
   } catch (err) {
     console.error('Waste summary error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -120,7 +120,7 @@ router.post('/', requireModule('batches'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Create waste record error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }
@@ -152,7 +152,7 @@ router.delete('/:id', requireModule('batches'), async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('Delete waste record error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   } finally {
     conn.release();
   }
