@@ -9,6 +9,7 @@ const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
+  options: '-c search_path=erp_app,public',
 });
 
 pool.on('connect', (client) => {
@@ -85,14 +86,21 @@ async function execQuery(sql, params = []) {
   const converted = convertMySQLtoPG(sql);
   const { sql: pgSql, params: pgParams } = expandArrayParams(converted, params);
 
-  if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
-    const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
-    const result = await pool.query(withReturning, pgParams);
-    return [[{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }], []];
-  }
+  const client = await pool.connect();
+  try {
+    await client.query('SET search_path TO erp_app, public');
 
-  const result = await pool.query(pgSql, pgParams);
-  return [result.rows, [{ affectedRows: result.rowCount }]];
+    if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
+      const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
+      const result = await client.query(withReturning, pgParams);
+      return [[{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }], []];
+    }
+
+    const result = await client.query(pgSql, pgParams);
+    return [result.rows, [{ affectedRows: result.rowCount }]];
+  } finally {
+    client.release();
+  }
 }
 
 function makeConn(conn) {

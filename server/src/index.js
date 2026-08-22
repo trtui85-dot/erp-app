@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './auth.js';
+import { pool } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
