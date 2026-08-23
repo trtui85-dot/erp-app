@@ -9,11 +9,11 @@ const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  options: '-c search_path=erp_app,public',
+  options: '-c search_path=public',
 });
 
 pool.on('connect', (client) => {
-  client.query('SET search_path TO erp_app, public');
+  client.query('SET search_path TO public');
 });
 
 async function ensureSchema(conn) {
@@ -88,7 +88,7 @@ async function execQuery(sql, params = []) {
 
   const client = await pool.connect();
   try {
-    await client.query('SET search_path TO erp_app, public');
+    await client.query('SET search_path TO public');
 
     if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
       const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
@@ -106,7 +106,7 @@ async function execQuery(sql, params = []) {
 function makeConn(conn) {
   return {
     beginTransaction: async () => {
-      await conn.query('SET search_path TO erp_app, public');
+      await conn.query('SET search_path TO public');
       await conn.query('BEGIN');
     },
     execute: async (sql, params = []) => {
@@ -145,7 +145,7 @@ export const query = execQuery;
 async function migrate() {
   const conn = await pool.connect();
   try {
-    await conn.query('SET search_path TO erp_app, public');
+    await conn.query('SET search_path TO public');
     await ensureSchema(conn);
     await conn.query(`CREATE TABLE IF NOT EXISTS suppliers (
       id SERIAL PRIMARY KEY,
