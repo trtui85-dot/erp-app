@@ -9,11 +9,11 @@ const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  options: '-c search_path=public',
+  options: '-c search_path=erp_app,public',
 });
 
 pool.on('connect', (client) => {
-  client.query('SET search_path TO public');
+  client.query('SET search_path TO erp_app, public');
 });
 
 async function ensureSchema(conn) {
@@ -88,7 +88,7 @@ async function execQuery(sql, params = []) {
 
   const client = await pool.connect();
   try {
-    await client.query('SET search_path TO public');
+    await client.query('SET search_path TO erp_app, public');
 
     if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
       const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
@@ -106,7 +106,7 @@ async function execQuery(sql, params = []) {
 function makeConn(conn) {
   return {
     beginTransaction: async () => {
-      await conn.query('SET search_path TO public');
+      await conn.query('SET search_path TO erp_app, public');
       await conn.query('BEGIN');
     },
     execute: async (sql, params = []) => {
