@@ -93,7 +93,7 @@ async function execQuery(sql, params = []) {
     if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
       const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
       const result = await client.query(withReturning, pgParams);
-      return [[{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }], []];
+      return [{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }, []];
     }
 
     const result = await client.query(pgSql, pgParams);
@@ -116,7 +116,7 @@ function makeConn(conn) {
       if (isInsert(converted) && !converted.toLowerCase().includes('returning')) {
         const withReturning = pgSql.replace(/;?\s*$/, '') + ' RETURNING id';
         const result = await conn.query(withReturning, pgParams);
-        return [[{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }], []];
+        return [{ insertId: result.rows[0]?.id, affectedRows: result.rowCount }, []];
       }
 
       const result = await conn.query(pgSql, pgParams);
