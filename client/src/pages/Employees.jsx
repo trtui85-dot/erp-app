@@ -129,21 +129,35 @@ export default function Employees() {
 
       {tab === "list" ? (
         employees.length === 0 ? <EmptyState icon={Users} msg={t("employees.noEmployees")} /> : (
-          <div className="stats-grid" style={{ marginBottom: 16 }}>
+          <div className="emp-grid">
             {employees.map((emp) => (
-              <div key={emp.id} className="stat-card" style={{ cursor: "pointer", opacity: emp.active ? 1 : 0.5 }} onClick={() => openEdit(emp)}>
-                <div className="stat-icon" style={{ background: emp.active ? "rgba(26,115,232,0.1)" : "rgba(0,0,0,0.05)" }}>
-                  <Users size={20} color={emp.active ? "var(--primary)" : "var(--gray-400)"} />
+              <div key={emp.id} className={`emp-card ${!emp.active ? "emp-card-inactive" : ""}`}>
+                <div className="emp-card-header" onClick={() => openEdit(emp)}>
+                  <div className="emp-avatar" style={{ background: emp.active ? "var(--primary)" : "var(--gray-300)" }}>
+                    {emp.name?.charAt(0)?.toUpperCase()}
+                  </div>
+                  <div className="emp-card-info">
+                    <div className="emp-card-name">{emp.name}</div>
+                    <div className="emp-card-role">{getRoleLabel(emp.role)}</div>
+                  </div>
                 </div>
-                <div className="stat-info">
-                  <div className="stat-value" style={{ fontSize: "0.9rem" }}>{emp.name}</div>
-                  <div className="stat-label">{getRoleLabel(emp.role)} — {getSalaryLabel(emp.salary_type)}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--gray-400)" }}>{Number(emp.salary_amount).toLocaleString()} {t("app.currency")}</div>
+                <div className="emp-card-body">
+                  <div className="emp-card-salary-type">{getSalaryLabel(emp.salary_type)}</div>
+                  <div className="emp-card-salary">{Number(emp.salary_amount).toLocaleString()} <span>{t("app.currency")}</span></div>
                 </div>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
-                  <button className="btn btn-ghost" style={{ fontSize: "0.65rem", padding: "2px 6px" }} onClick={(e) => { e.stopPropagation(); setAttModal(emp); }}><Calendar size={12} /> {t("employees.attendance")}</button>
-                  <button className="btn btn-ghost" style={{ fontSize: "0.65rem", padding: "2px 6px" }} onClick={(e) => { e.stopPropagation(); setPayModal(emp); setPayForm({ amount: emp.salary_amount || "", payment_method_id: paymentMethods[0]?.id || "", notes: "" }); }}><CreditCard size={12} /> {t("employees.pay")}</button>
-                  <button className="btn btn-ghost" style={{ fontSize: "0.65rem", padding: "2px 6px" }} onClick={(e) => { e.stopPropagation(); setAdvModal(emp); }}><ArrowDownCircle size={12} /> {t("employees.advance")}</button>
+                <div className="emp-card-actions">
+                  <button className="emp-card-btn emp-btn-attendance" onClick={(e) => { e.stopPropagation(); setAttModal(emp); }}>
+                    <Calendar size={15} />
+                    <span>{t("employees.attendance")}</span>
+                  </button>
+                  <button className="emp-card-btn emp-btn-pay" onClick={(e) => { e.stopPropagation(); setPayModal(emp); setPayForm({ amount: emp.salary_amount || "", payment_method_id: paymentMethods[0]?.id || "", notes: "" }); }}>
+                    <CreditCard size={15} />
+                    <span>{t("employees.pay")}</span>
+                  </button>
+                  <button className="emp-card-btn emp-btn-advance" onClick={(e) => { e.stopPropagation(); setAdvModal(emp); }}>
+                    <ArrowDownCircle size={15} />
+                    <span>{t("employees.advance")}</span>
+                  </button>
                 </div>
               </div>
             ))}
