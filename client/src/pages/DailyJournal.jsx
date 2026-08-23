@@ -28,7 +28,10 @@ export default function DailyJournal() {
     try {
       const res = await http.get("/dailyjournal", { params: { date } });
       setData(res.data);
-    } catch {}
+    } catch (err) {
+      console.error("DailyJournal error:", err);
+      setData(null);
+    }
     finally { setLoading(false); }
   };
   useEffect(() => { fetchData(); }, [date]);
