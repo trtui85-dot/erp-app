@@ -2,6 +2,7 @@
   "name": "erp-app",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "npm --prefix server run dev",
@@ -9,6 +10,14 @@
     "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install",
     "start": "npm --prefix server start",
     "postinstall": "npm --prefix server install"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

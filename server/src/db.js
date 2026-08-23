@@ -3,13 +3,12 @@ import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
-const DB_URL = process.env.DATABASE_URL || 'postgresql://factory_manager_user:apDO6DzshNP0oLCKmACPunlg53BX0W97@dpg-da2crt15efls73a0lhn0-a/factory_manager';
+const DB_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_NFSBT54lmtXQ@ep-dry-heart-axq6a2oz-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require';
 
 const pool = new Pool({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  options: '-c search_path=erp_app,public',
 });
 
 pool.on('connect', (client) => {

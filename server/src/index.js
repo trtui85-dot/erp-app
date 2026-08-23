@@ -63,12 +63,16 @@ app.use('/api/employee-advances', authenticate, employeeAdvanceRoutes);
 app.use('/api/employee-report', authenticate, employeeReportRoutes);
 app.use('/api/categories', authenticate, categoryRoutes);
 
-const clientDist = path.resolve(__dirname, '../../client/dist');
-app.use(express.static(clientDist));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
+if (!process.env.VERCEL) {
+  const clientDist = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;
