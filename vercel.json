@@ -1,31 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "client/dist/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/(assets/.*)",
-      "dest": "/client/dist/$1"
-    },
-    {
-      "src": "/(.+\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json))",
-      "dest": "/client/dist/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/dist/index.html"
-    }
+  "buildCommand": "npm --prefix client install && npm --prefix client run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/api/:path+", "destination": "/api/index" }
   ]
 }
