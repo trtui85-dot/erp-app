@@ -19,16 +19,16 @@ router.get('/stats', async (req, res) => {
     `);
     const [pendingDebts] = await query("SELECT COUNT(*) as count, COALESCE(SUM(amount - paid), 0) as total FROM debts WHERE status IN ('pending', 'partial')");
     const [todaySales] = await query(
-      'SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total FROM sale_invoices WHERE date = CURDATE()'
+      'SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total FROM sale_invoices WHERE date = CURRENT_DATE'
     );
     const [weekSupplies] = await query(
-      "SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total FROM supply_invoices WHERE date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+      "SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total FROM supply_invoices WHERE date >= CURRENT_DATE - INTERVAL '7 days'"
     );
     const [totalWaste] = await query(
       "SELECT COUNT(*) as count, COALESCE(SUM(loss_value), 0) as total FROM waste_records"
     );
     const [todayWaste] = await query(
-      "SELECT COUNT(*) as count, COALESCE(SUM(loss_value), 0) as total FROM waste_records WHERE date = CURDATE()"
+      "SELECT COUNT(*) as count, COALESCE(SUM(loss_value), 0) as total FROM waste_records WHERE date = CURRENT_DATE"
     );
 
     const [lowStockRows] = await query(`
@@ -44,11 +44,11 @@ router.get('/stats', async (req, res) => {
 
     const [dangerBatches] = await query(`
       SELECT b.id, b.batch_code, p.name as product_name, b.remaining_qty,
-        DATEDIFF(CURDATE(), b.arrival_date) as age_days, p.shelf_life_days
+        (CURRENT_DATE - b.arrival_date)::int as age_days, p.shelf_life_days
       FROM batches b
       JOIN products p ON b.product_id = p.id
       WHERE b.status = 'active' AND b.remaining_qty > 0
-        AND DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.75
+        AND (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.75
       ORDER BY age_days DESC
       LIMIT 5
     `);

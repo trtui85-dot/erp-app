@@ -25,12 +25,13 @@ router.get('/', requireModule('batches'), async (req, res) => {
   try {
     let sql = `
       SELECT b.*, p.name as product_name, p.shelf_life_days, p.category_id, s.name as supplier_name,
-        DATEDIFF(CURDATE(), b.arrival_date) as age_days,
+      SELECT b.*, p.name as product_name, p.shelf_life_days, p.category_id, s.name as supplier_name,
+        (CURRENT_DATE - b.arrival_date)::int as age_days,
         CASE
           WHEN b.remaining_qty <= 0 THEN 'finished'
           WHEN b.status = 'expired' THEN 'expired'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.75 THEN 'danger'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.40 THEN 'warning'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.75 THEN 'danger'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.40 THEN 'warning'
           ELSE 'fresh'
         END as health
       FROM batches b

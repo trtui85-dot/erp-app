@@ -89,13 +89,13 @@ router.get('/batches-health', async (req, res) => {
         b.status,
         p.name as product_name,
         p.shelf_life_days,
-        DATEDIFF(CURDATE(), b.arrival_date) as age_days,
-        ROUND(DATEDIFF(CURDATE(), b.arrival_date) / p.shelf_life_days * 100, 1) as life_pct,
+        (CURRENT_DATE - b.arrival_date)::int as age_days,
+        ROUND((CURRENT_DATE - b.arrival_date)::int / p.shelf_life_days * 100, 1) as life_pct,
         CASE
           WHEN b.remaining_qty <= 0 THEN 'finished'
           WHEN b.status = 'expired' THEN 'expired'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.75 THEN 'danger'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.40 THEN 'warning'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.75 THEN 'danger'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.40 THEN 'warning'
           ELSE 'fresh'
         END as health
       FROM batches b

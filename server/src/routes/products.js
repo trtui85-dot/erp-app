@@ -31,11 +31,11 @@ router.get('/:id', requireModule('products'), async (req, res) => {
     }
     const [batches] = await query(
       `SELECT b.*, s.name as supplier_name,
-        DATEDIFF(CURDATE(), b.arrival_date) as age_days,
+        (CURRENT_DATE - b.arrival_date)::int as age_days,
         CASE
           WHEN b.remaining_qty <= 0 THEN 'finished'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.75 THEN 'danger'
-          WHEN DATEDIFF(CURDATE(), b.arrival_date) >= p.shelf_life_days * 0.40 THEN 'warning'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.75 THEN 'danger'
+          WHEN (CURRENT_DATE - b.arrival_date)::int >= p.shelf_life_days * 0.40 THEN 'warning'
           ELSE 'fresh'
         END as health
        FROM batches b

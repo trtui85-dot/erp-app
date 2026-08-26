@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
         (SELECT COUNT(*) FROM batches b
          JOIN products p ON p.id = b.product_id
          WHERE p.category_id = c.id AND b.status = 'active' AND b.remaining_qty > 0
-         AND b.expiry_date IS NOT NULL AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 2 DAY)) AS danger_count
+         AND b.expiry_date IS NOT NULL AND b.expiry_date <= CURRENT_DATE + INTERVAL '2 days') AS danger_count
       FROM categories c
       WHERE c.active = 1
       ORDER BY c.sort_order, c.id
@@ -33,7 +33,7 @@ router.get('/:id/products', async (req, res) => {
          FROM batches b2 WHERE b2.product_id = p.id AND b2.status = 'active' AND b2.remaining_qty > 0) AS stock_value,
         (SELECT COUNT(*) FROM batches b3
          WHERE b3.product_id = p.id AND b3.status = 'active' AND b3.remaining_qty > 0
-         AND b3.expiry_date IS NOT NULL AND b3.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 2 DAY)) AS danger_batches
+         AND b3.expiry_date IS NOT NULL AND b3.expiry_date <= CURRENT_DATE + INTERVAL '2 days') AS danger_batches
       FROM products p
       LEFT JOIN batches b ON b.product_id = p.id AND b.status = 'active' AND b.remaining_qty > 0
       WHERE p.category_id = ? AND p.active = 1
