@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, EmptyState } from "../components/ui";
-import { Sun, Save, CheckCircle } from "lucide-react";
+import { Sun, Save, Search, X } from "lucide-react";
 
 export default function DailyPrices() {
   const { t } = useTranslation();
@@ -12,6 +12,7 @@ export default function DailyPrices() {
   const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -43,6 +44,7 @@ export default function DailyPrices() {
     finally { setSaving(false); }
   };
 
+  const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
   const today = new Date().toLocaleDateString("fr-FR");
 
   return (
@@ -53,24 +55,30 @@ export default function DailyPrices() {
       </div>
       {loading ? <PageLoader /> : products.length === 0 ? <EmptyState icon={Sun} msg={t("dailyPrices.noProducts")} /> : (
         <>
-          <div className="price-list">
-            {products.map((p) => (
-              <div key={p.id} className="price-row">
-                <div className="price-name">{p.name}</div>
-                <div className="price-input-wrap">
+          <div className="search-wrap" style={{ marginBottom: 16 }}>
+            <Search size={18} className="search-icon" />
+            <input className="search-input" placeholder={t("products.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+            {search && <button className="search-clear" onClick={() => setSearch("")}><X size={14} /></button>}
+          </div>
+          <div className="dp-grid">
+            {filtered.map((p) => (
+              <div key={p.id} className="dp-card">
+                <div className="dp-card-name">{p.name}</div>
+                <div className="dp-card-unit">{p.unit || "kg"}</div>
+                <div className="dp-card-price">
                   <input
                     type="number"
                     step="0.01"
-                    className="price-input"
+                    className="dp-card-input"
                     value={prices[p.id] || ""}
                     onChange={(e) => handleChange(p.id, e.target.value)}
                   />
-                  <span className="price-unit">{t("app.currency")}</span>
+                  <span className="dp-card-currency">{t("app.currency")}</span>
                 </div>
               </div>
             ))}
           </div>
-          <button className="btn btn-primary btn-block" onClick={handleSaveAll} disabled={saving}>
+          <button className="btn btn-primary btn-block" onClick={handleSaveAll} disabled={saving} style={{ marginTop: 16 }}>
             <Save size={18} /> {saving ? "..." : t("dailyPrices.update")}
           </button>
         </>

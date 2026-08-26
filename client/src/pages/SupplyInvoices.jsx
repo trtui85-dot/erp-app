@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { Modal, EmptyState, PageLoader, DataTable, SearchSelect } from "../components/ui";
-import { Plus, Trash2, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ClipboardList, Printer } from "lucide-react";
 
 const emptyItem = { product_id: "", qty: 1, unit: "kg", purchase_price: "", sale_price: "", expiry_date: "" };
 
@@ -73,10 +73,73 @@ export default function SupplyInvoices() {
     finally { setSaving(false); }
   };
 
+  const handlePrintA5 = async (inv) => {
+    try {
+      const res = await http.get(`/supplyinvoices/${inv.id}`);
+      const data = res.data;
+      const pw = window.open("", "_blank", "width=800,height=600");
+      if (!pw) return;
+      const items = data.items || [];
+      const totalHT = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.purchase_price || 0), 0);
+      pw.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+      <style>
+        @page { size: A5 landscape; margin: 10mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif; font-size: 11px; color: #222; width: 210mm; padding: 10mm; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-bottom: 14px; }
+        .header-left h1 { font-size: 16px; color: #1a73e8; margin-bottom: 2px; }
+        .header-left p { font-size: 10px; color: #666; }
+        .header-right { text-align: right; }
+        .header-right .inv-code { font-size: 14px; font-weight: 700; color: #1a73e8; }
+        .header-right .inv-date { font-size: 10px; color: #666; margin-top: 2px; }
+        .info-row { display: flex; gap: 30px; margin-bottom: 14px; font-size: 10px; color: #555; }
+        .info-row span { font-weight: 600; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        th { background: #f0f4ff; color: #1a73e8; font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 2px solid #1a73e8; text-align: left; }
+        td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
+        tr:last-child td { border-bottom: none; }
+        .text-right { text-align: right; }
+        .total-row { background: #f0f4ff; font-weight: 700; }
+        .total-row td { border-top: 2px solid #1a73e8; border-bottom: 2px solid #1a73e8; font-size: 12px; color: #1a73e8; }
+        .footer { margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 9px; color: #999; display: flex; justify-content: space-between; }
+        .notes { background: #fef7e0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 10px; color: #92400e; }
+      </style></head><body>
+      <div class="header">
+        <div class="header-left">
+          <h1>SIR Solutions Informatiques Rapides</h1>
+          <p>الإدارة التجارية — Facture d'approvisionnement</p>
+        </div>
+        <div class="header-right">
+          <div class="inv-code">${data.invoice_code || "#" + data.id}</div>
+          <div class="inv-date">${data.date}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div>Fournisseur: <span>${data.supplier_name || "—"}</span></div>
+        <div>Articles: <span>${items.length}</span></div>
+      </div>
+      ${data.notes ? '<div class="notes">📝 ' + data.notes + '</div>' : ''}
+      <table>
+        <thead><tr>
+          <th>#</th><th>Produit</th><th>Qté</th><th>Unité</th><th class="text-right">Prix Achat</th><th class="text-right">Prix Vente</th><th class="text-right">Sous-total</th>
+        </tr></thead>
+        <tbody>
+          ${items.map((it, i) => '<tr><td>' + (i + 1) + '</td><td>' + (it.product_name || "") + '</td><td>' + it.qty + '</td><td>' + (it.unit || "") + '</td><td class="text-right">' + Number(it.purchase_price || 0).toLocaleString() + '</td><td class="text-right">' + Number(it.sale_price || 0).toLocaleString() + '</td><td class="text-right">' + Number((it.qty || 0) * (it.purchase_price || 0)).toLocaleString() + '</td></tr>').join('')}
+          <tr class="total-row"><td colspan="6" class="text-right">TOTAL</td><td class="text-right">${totalHT.toLocaleString()} MRU</td></tr>
+        </tbody>
+      </table>
+      <div class="footer"><span>SIR.MR — Solutions Informatiques Rapides</span><span>Impression: ${new Date().toLocaleString("fr-FR")}</span></div>
+      </body></html>`);
+      pw.document.close();
+      setTimeout(() => { pw.print(); }, 400);
+    } catch (err) { toast.error("Erreur impression"); }
+  };
+
   const columns = [
     { label: t("supplyInvoices.supplier") },
     { label: t("app.date"), width: "110px" },
     { label: t("app.total"), width: "120px" },
+    { label: "", width: "50px" },
   ];
 
   return (
@@ -92,6 +155,9 @@ export default function SupplyInvoices() {
               <td className="card-cell-primary">{inv.supplier_name}</td>
               <td>{inv.date}</td>
               <td>{Number(inv.total).toLocaleString()} {t("app.currency")}</td>
+              <td>
+                <button className="icon-btn" onClick={() => handlePrintA5(inv)} title="Imprimer A5"><Printer size={16} /></button>
+              </td>
             </tr>
           ))}
         </DataTable>

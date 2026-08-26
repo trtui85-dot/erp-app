@@ -1622,6 +1622,72 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 /* ========================================
+   DAILY PRICES GRID
+   ======================================== */
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .dp-grid { grid-template-columns: 1fr; }
+}
+.dp-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: box-shadow 0.15s ease;
+}
+.dp-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+.dp-card-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-card-unit {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-bottom: 6px;
+}
+.dp-card-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dp-card-input {
+  flex: 1;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  text-align: right;
+  transition: border-color 0.15s ease;
+}
+.dp-card-input:focus {
+  border-color: var(--primary);
+  background: var(--white);
+}
+.dp-card-currency {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+/* ========================================
    PRINT
    ======================================== */
 @media print {
