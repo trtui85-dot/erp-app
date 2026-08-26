@@ -263,11 +263,32 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .sidebar-header .sidebar-logo {
-  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: var(--primary);
+  padding: 4px;
+  object-fit: contain;
 }
 
 .sidebar-title {
-  font-family: var(--font-heading); font-size: 1rem; font-weight: 600; color: var(--gray-800);
+  font-family: 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', sans-serif;
+  font-size: 1rem; font-weight: 700; color: var(--gray-800);
+  letter-spacing: 0;
+}
+
+.sidebar-title-box {
+  background: var(--primary);
+  color: white;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-title-box .sidebar-title {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .sidebar-nav {
@@ -334,8 +355,23 @@ table { border-collapse: collapse; width: 100%; }
   z-index: var(--z-sticky);
 }
 .topbar-left { display: flex; align-items: center; gap: 10px; }
-.topbar-logo { width: 28px; height: 28px; border-radius: var(--radius-sm); object-fit: contain; }
-.topbar-title { font-family: var(--font-heading); font-size: 0.95rem; font-weight: 600; color: var(--gray-700); }
+.topbar-logo { width: 32px; height: 32px; border-radius: var(--radius-sm); object-fit: contain; background: var(--primary); padding: 3px; }
+.topbar-title { font-family: 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--gray-700); }
+.topbar-title-box {
+  background: var(--primary);
+  color: white;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-title-box .topbar-title {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .topbar-right { display: flex; align-items: center; gap: 4px; }
 .topbar-user {
   font-size: 0.8rem; font-weight: 500; color: var(--gray-600);

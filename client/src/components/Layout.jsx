@@ -70,7 +70,9 @@ export default function Layout({ children }) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <img src="/logousigne.png" alt="" className="sidebar-logo" />
-          <span className="sidebar-title">{t("app.title")}</span>
+          <div className="sidebar-title-box">
+            <span className="sidebar-title">{t("app.title")}</span>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => {
@@ -94,7 +96,9 @@ export default function Layout({ children }) {
         <header className="topbar">
           <div className="topbar-left">
             <img src="/logousigne.png" alt="" className="topbar-logo" />
-            <span className="topbar-title">{t("app.title")}</span>
+            <div className="topbar-title-box">
+              <span className="topbar-title">{t("app.title")}</span>
+            </div>
           </div>
           <div className="topbar-right">
             <button className="icon-btn" onClick={toggleLang}><Globe size={20} /></button>
