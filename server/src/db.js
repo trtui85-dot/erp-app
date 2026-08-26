@@ -442,6 +442,8 @@ async function migrate() {
       created_at TIMESTAMP DEFAULT NOW()
     )`);
 
+    await conn.query(`ALTER TABLE sale_invoices ALTER COLUMN customer_id DROP NOT NULL`);
+
     const adminCheck = await conn.query('SELECT id FROM users WHERE phone = $1', ['22222222']);
     if (adminCheck.rows.length === 0) {
       const hash = await bcrypt.hash('2222', 10);
