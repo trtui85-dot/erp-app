@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { Modal, EmptyState, PageLoader, Badge, SearchSelect } from "../components/ui";
-import { Plus, Edit, Trash2, Package, Search, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Search, AlertTriangle, ChevronLeft, FolderOpen } from "lucide-react";
 
 export default function Products() {
   const { t } = useTranslation();
@@ -16,6 +16,7 @@ export default function Products() {
   const [form, setForm] = useState({ name: "", unit: "kg", price_type: "fixed", current_sale_price: "", min_stock: 20, shelf_life_days: 5, category_id: "" });
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [selectedCat, setSelectedCat] = useState(null);
 
   const load = () => {
     http.get("/products").then((d) => setItems(d.data)).catch(() => {}).finally(() => setLoading(false));
@@ -23,9 +24,10 @@ export default function Products() {
   };
   useEffect(load, []);
 
-  const filtered = items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
+  const catProducts = selectedCat ? items.filter((i) => i.category_id === selectedCat.id) : [];
+  const filtered = selectedCat ? catProducts.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())) : [];
 
-  const openAdd = () => { setEditItem(null); setForm({ name: "", unit: "kg", price_type: "fixed", current_sale_price: "", min_stock: 20, shelf_life_days: 5, category_id: "" }); setModal(true); };
+  const openAdd = (catId) => { setEditItem(null); setForm({ name: "", unit: "kg", price_type: "fixed", current_sale_price: "", min_stock: 20, shelf_life_days: 5, category_id: catId || "" }); setModal(true); };
   const openEdit = (item) => { setEditItem(item); setForm({ name: item.name, unit: item.unit || "kg", price_type: item.price_type, current_sale_price: item.current_sale_price || "", min_stock: item.min_stock || 20, shelf_life_days: item.shelf_life_days || 5, category_id: item.category_id || "" }); setModal(true); };
 
   const handleSubmit = async (e) => {
@@ -52,17 +54,48 @@ export default function Products() {
     catch (err) { toast.error(err.message || "Erreur"); }
   };
 
+  if (loading) return <PageLoader />;
+
+  if (!selectedCat) {
+    return (
+      <div className="page-container">
+        <div className="page-header">
+          <h1 className="page-title">{t("categories.title")}</h1>
+        </div>
+        {categories.length === 0 ? <EmptyState icon={FolderOpen} msg={t("categories.noCategories")} /> : (
+          <div className="cat-grid">
+            {categories.map((cat) => {
+              const count = items.filter((i) => i.category_id === cat.id).length;
+              return (
+                <div key={cat.id} className="cat-card" onClick={() => { setSelectedCat(cat); setSearch(""); }} style={{ borderTopColor: cat.color }}>
+                  <div className="cat-card-icon">{cat.icon}</div>
+                  <div className="cat-card-info">
+                    <div className="cat-card-name">{cat.name}</div>
+                    <div className="cat-card-count">{count} {t("categories.products")}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">{t("products.title")}</h1>
-        <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> {t("products.add")}</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+          <button className="btn btn-ghost" onClick={() => { setSelectedCat(null); setSearch(""); }}><ChevronLeft size={18} /></button>
+          <h1 className="page-title">{selectedCat.icon} {selectedCat.name}</h1>
+        </div>
+        <button className="btn btn-primary" onClick={() => openAdd(selectedCat.id)}><Plus size={18} /> {t("products.add")}</button>
       </div>
       <div className="search-wrap">
         <Search size={18} className="search-icon" />
         <input className="search-input" placeholder={t("products.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      {loading ? <PageLoader /> : filtered.length === 0 ? <EmptyState icon={Package} msg={t("products.noData")} /> : (
+      {filtered.length === 0 ? <EmptyState icon={Package} msg={t("products.noData")} /> : (
         <div className="card-list">
           {filtered.map((item) => {
             const isLow = Number(item.total_stock) <= Number(item.min_stock);
