@@ -186,6 +186,7 @@
     "stockInsufficient": "المخزون غير كافٍ",
     "addItem": "إضافة صنف",
     "selectCustomer": "اختر العميل",
+    "noCustomer": "عميل (اختياري)",
     "saleTo": "بيع إلى"
   },
   "debts": {

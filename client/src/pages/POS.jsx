@@ -65,7 +65,10 @@ export default function POS() {
     batches.forEach((b) => {
       if (b.status === "active" && Number(b.remaining_qty) > 0) {
         const pid = b.product_id;
-        if (!map[pid]) map[pid] = { ...batches.find((x) => x.product_id === pid && x.status === "active"), total_stock: 0, product_id: pid, product_name: b.product_name, category_id: b.category_id };
+        if (!map[pid]) {
+          const prod = products.find((x) => x.id === pid);
+          map[pid] = { ...b, total_stock: 0, product_id: pid, product_name: b.product_name, category_id: b.category_id, current_sale_price: prod?.current_sale_price || b.sale_price };
+        }
         map[pid].total_stock += Number(b.remaining_qty);
       }
     });
@@ -74,7 +77,7 @@ export default function POS() {
       if (selectedCategory && p.category_id !== selectedCategory) return false;
       return true;
     });
-  }, [batches, search, selectedCategory]);
+  }, [batches, products, search, selectedCategory]);
 
   const addToCart = (product) => {
     const existing = cart.find((c) => c.product_id === product.product_id);
@@ -87,7 +90,7 @@ export default function POS() {
         product_name: product.product_name,
         batch_id: batch?.id,
         qty: 1,
-        price: Number(batch?.sale_price || 0),
+        price: Number(product.current_sale_price || batch?.sale_price || 0),
         max_qty: Number(batch?.remaining_qty || 0),
       }]);
     }
@@ -125,7 +128,7 @@ export default function POS() {
     setSaving(true);
     try {
       const payload = {
-        customer_id: selectedCustomer?.id || customers[0]?.id,
+        customer_id: selectedCustomer?.id || null,
         date: new Date().toISOString().split("T")[0],
         type: "retail",
         paid: total,
@@ -268,7 +271,7 @@ export default function POS() {
               {availableProducts.map((p) => (
                 <tr key={p.product_id} className="pos-product-row" onClick={() => addToCart(p)}>
                   <td className="pos-product-name">{p.product_name}</td>
-                  <td className="pos-product-price">{Number(p.sale_price || p.price || 0).toLocaleString()}</td>
+                  <td className="pos-product-price">{Number(p.current_sale_price || p.sale_price || 0).toLocaleString()}</td>
                   <td className="pos-product-stock">{Number(p.total_stock).toLocaleString()}</td>
                 </tr>
               ))}
@@ -287,8 +290,8 @@ export default function POS() {
 
         <div className="pos-customer-bar">
           <User size={16} />
-          <SearchSelect compact value={selectedCustomer?.id || ""} onChange={(v) => setSelectedCustomer(customers.find((c) => c.id === Number(v)) || null)}
-            options={[{ value: "", label: t("pos.selectCustomer") }, ...customers.map((c) => ({ value: c.id, label: c.name }))]} />
+          <SearchSelect compact value={selectedCustomer?.id || ""} onChange={(v) => setSelectedCustomer(v ? customers.find((c) => c.id === Number(v)) || null : null)}
+            options={[{ value: "", label: t("pos.noCustomer") || "Client (optionnel)" }, ...customers.map((c) => ({ value: c.id, label: c.name }))]} />
           <button className="pos-quick-add" onClick={() => setShowCustomerModal(true)}><Plus size={16} /></button>
         </div>
 

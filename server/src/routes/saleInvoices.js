@@ -9,7 +9,7 @@ router.get('/', requireModule('saleInvoices'), async (req, res) => {
     const [invoices] = await query(`
       SELECT si.*, c.name as customer_name, c.phone as customer_phone, pm.name AS payment_method_name, pm.icon AS payment_method_icon
       FROM sale_invoices si
-      JOIN customers c ON si.customer_id = c.id
+      LEFT JOIN customers c ON si.customer_id = c.id
       LEFT JOIN payment_methods pm ON si.payment_method_id = pm.id
       ORDER BY si.id DESC
     `);
@@ -25,7 +25,7 @@ router.get('/:id', requireModule('saleInvoices'), async (req, res) => {
     const [invoices] = await query(`
       SELECT si.*, c.name as customer_name, c.phone as customer_phone, pm.name AS payment_method_name
       FROM sale_invoices si
-      JOIN customers c ON si.customer_id = c.id
+      LEFT JOIN customers c ON si.customer_id = c.id
       LEFT JOIN payment_methods pm ON si.payment_method_id = pm.id
       WHERE si.id = ?
     `, [req.params.id]);
@@ -51,8 +51,8 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
   try {
     await conn.beginTransaction();
     const { customer_id, date, type, paid, notes, items, payment_method_id } = req.body;
-    if (!customer_id || !items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'customer_id and items are required' });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items are required' });
     }
 
     for (const item of items) {
@@ -84,7 +84,7 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
 
     const [invoiceResult] = await conn.execute(
       'INSERT INTO sale_invoices (customer_id, date, type, total, paid, notes, created_by, payment_method_id, invoice_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [customer_id, invoiceDate, type || 'retail', total, paidAmount, notes || null, req.user.id, payment_method_id || null, invoiceCode]
+      [customer_id || null, invoiceDate, type || 'retail', total, paidAmount, notes || null, req.user.id, payment_method_id || null, invoiceCode]
     );
     const invoiceId = invoiceResult.insertId;
 
@@ -122,7 +122,7 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
       );
     }
 
-    if (total > paidAmount) {
+    if (total > paidAmount && customer_id) {
       const debtAmount = total - paidAmount;
       await conn.execute(
         'INSERT INTO debts (customer_id, sale_invoice_id, amount, paid, status, created_date) VALUES (?, ?, ?, ?, ?, ?)',

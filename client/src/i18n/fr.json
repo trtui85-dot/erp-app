@@ -186,6 +186,7 @@
     "stockInsufficient": "Stock insuffisant",
     "addItem": "Ajouter un article",
     "selectCustomer": "Sélectionner un client",
+    "noCustomer": "Client (optionnel)",
     "saleTo": "Vente à"
   },
   "debts": {
