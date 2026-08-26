@@ -25,7 +25,6 @@ router.get('/', requireModule('batches'), async (req, res) => {
   try {
     let sql = `
       SELECT b.*, p.name as product_name, p.shelf_life_days, p.category_id, s.name as supplier_name,
-      SELECT b.*, p.name as product_name, p.shelf_life_days, p.category_id, s.name as supplier_name,
         (CURRENT_DATE - b.arrival_date)::int as age_days,
         CASE
           WHEN b.remaining_qty <= 0 THEN 'finished'
