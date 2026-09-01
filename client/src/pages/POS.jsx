@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, Modal, SearchSelect } from "../components/ui";
 import { ShoppingCart, Plus, Minus, Trash2, User, CreditCard, Printer, Search, X, Check, Wallet, Smartphone, Building2, Send, Banknote, ArrowDownCircle, FileText, Maximize2, Minimize2, ListPlus } from "lucide-react";
-
-const emptyOtherItem = { product_name: "", qty: 1, price: "" };
 
 const METHOD_ICONS = { Wallet, Smartphone, CreditCard, Building2, Send, Banknote };
 
 export default function POS() {
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -32,12 +32,6 @@ export default function POS() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [otherMode, setOtherMode] = useState(false);
-  const [otherItems, setOtherItems] = useState([{ ...emptyOtherItem }]);
-  const [otherPayment, setOtherPayment] = useState(null);
-  const [otherPayType, setOtherPayType] = useState("full");
-  const [otherCustomer, setOtherCustomer] = useState(null);
-  const [savingOther, setSavingOther] = useState(false);
   const receiptRef = useRef(null);
 
   useEffect(() => {
@@ -242,46 +236,6 @@ export default function POS() {
     printWindow.print();
   };
 
-  const openOtherMode = () => {
-    setOtherItems([{ ...emptyOtherItem }]);
-    setOtherPayment(selectedPayment);
-    setOtherPayType("full");
-    setOtherCustomer(selectedCustomer);
-    setOtherMode(true);
-  };
-
-  const updateOtherItem = (idx, field, value) => {
-    setOtherItems(otherItems.map((it, i) => i === idx ? { ...it, [field]: value } : it));
-  };
-
-  const otherTotal = otherItems.reduce((s, it) => s + Number(it.qty || 0) * Number(it.price || 0), 0);
-  const otherPaid = otherPayType === "full" ? otherTotal : otherPayType === "half" ? otherTotal / 2 : 0;
-
-  const handleSaveOther = async () => {
-    const valid = otherItems.filter((it) => it.product_name.trim() && Number(it.qty) > 0 && Number(it.price) >= 0);
-    if (valid.length === 0) return toast.error(t("pos.cartEmpty"));
-    setSavingOther(true);
-    try {
-      const payload = {
-        customer_id: otherCustomer?.id || null,
-        date: new Date().toISOString().split("T")[0],
-        type: "other",
-        paid: otherPaid,
-        payment_method_id: otherPayment?.id || null,
-        items: valid.map((it) => ({ product_name: it.product_name.trim(), qty: Number(it.qty), price: Number(it.price) })),
-      };
-      const res = await http.post("/saleinvoices", payload);
-      setLastInvoice(res.data);
-      setOtherMode(false);
-      const freshB = await http.get("/batches");
-      setBatches(freshB.data);
-      const fresh = await http.get("/saleinvoices");
-      setRecentInvoices(fresh.data.slice(0, 10));
-      toast.success("✓ " + t("pos.invoiceSaved"));
-    } catch (err) { toast.error(err.message || "Erreur"); }
-    finally { setSavingOther(false); }
-  };
-
   if (loading) return <PageLoader />;
 
   return (
@@ -297,7 +251,7 @@ export default function POS() {
             <input className="search-input" placeholder={t("pos.searchProducts")} value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={(e) => { if (!e.target.value) setSearchFocused(false); }} />
             {search && <X size={14} className="search-clear" onClick={() => { setSearch(""); setSearchFocused(false); }} />}
           </div>
-          <button className="pos-other-btn" onClick={openOtherMode}>
+          <button className="pos-other-btn" onClick={() => navigate("/otherSales")}>
             <ListPlus size={16} /> {t("pos.otherMode")}
           </button>
         </div>
@@ -456,75 +410,6 @@ export default function POS() {
             </button>
           </div>
         )}
-      </Modal>
-
-      {/* Other Mode Modal */}
-      <Modal open={otherMode} onClose={() => setOtherMode(false)} title={t("pos.otherMode")} wide>
-        <div className="modal-form">
-          <div className="pos-other-section">
-            <div className="section-title" style={{ marginBottom: 8 }}>{t("pos.otherItems")} — {otherItems.length}</div>
-            {otherItems.map((it, idx) => (
-              <div key={idx} className="pos-other-row">
-                <input className="input-other" style={{ flex: 3 }} placeholder={t("pos.otherProductName")} value={it.product_name}
-                  onChange={(e) => updateOtherItem(idx, "product_name", e.target.value)} />
-                <input className="input-other" style={{ flex: 1 }} type="number" placeholder={t("pos.price")} value={it.price}
-                  onChange={(e) => updateOtherItem(idx, "price", e.target.value)} />
-                <input className="input-other" style={{ flex: 1 }} type="number" placeholder={t("pos.qty")} value={it.qty}
-                  onChange={(e) => updateOtherItem(idx, "qty", e.target.value)} />
-                <button type="button" className="icon-btn icon-btn-danger" onClick={() => setOtherItems(otherItems.filter((_, i) => i !== idx))}><X size={16} /></button>
-              </div>
-            ))}
-            <button type="button" className="btn btn-ghost btn-block" onClick={() => setOtherItems([...otherItems, { ...emptyOtherItem }])}>
-              <Plus size={14} /> {t("supplyInvoices.addItem")}
-            </button>
-          </div>
-
-          <div className="input-group">
-            <label>{t("pos.customer")}</label>
-            <SearchSelect compact value={otherCustomer?.id || ""} onChange={(v) => setOtherCustomer(v ? customers.find((c) => c.id === Number(v)) || null : null)}
-              options={[{ value: "", label: t("pos.noCustomer") || "Client (optionnel)" }, ...customers.map((c) => ({ value: c.id, label: c.name }))]} />
-          </div>
-
-          <div className="pos-payment-methods" style={{ marginTop: 8 }}>
-            {paymentMethods.map((pm) => {
-              const Ic = METHOD_ICONS[pm.icon] || Wallet;
-              return (
-                <button key={pm.id} className={`pos-payment-btn${otherPayment?.id === pm.id ? " active" : ""}`} onClick={() => setOtherPayment(pm)} style={otherPayment?.id === pm.id ? { borderColor: pm.color, background: pm.color + "11" } : {}}>
-                  {pm.logo_url ? (
-                    <img src={pm.logo_url} alt={pm.name} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
-                  ) : (
-                    <Ic size={18} color={pm.color} />
-                  )}
-                  <span>{pm.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="pos-other-pay">
-            <button type="button" className={`pos-paytype-btn${otherPayType === "full" ? " active" : ""}`} onClick={() => setOtherPayType("full")}>{t("pos.full")}</button>
-            <button type="button" className={`pos-paytype-btn${otherPayType === "half" ? " active" : ""}`} onClick={() => setOtherPayType("half")}>{t("pos.half")}</button>
-            {otherPayType !== "full" && otherPayType !== "half" && <button type="button" className="pos-paytype-btn active">{t("pos.manualAmount")}</button>}
-          </div>
-
-          <div className="pos-total" style={{ marginTop: 10 }}>
-            <span>{t("pos.total")}</span>
-            <span className="pos-total-value">{otherTotal.toLocaleString()} {t("app.currency")}</span>
-          </div>
-          {otherPayType === "half" && (
-            <div className="pos-total" style={{ marginTop: 2 }}>
-              <span>{t("pos.amountDue")}</span>
-              <span className="pos-total-value">{otherPaid.toLocaleString()} {t("app.currency")}</span>
-            </div>
-          )}
-
-          <div className="modal-actions" style={{ marginTop: 14 }}>
-            <button type="button" className="btn btn-ghost" onClick={() => setOtherMode(false)}>{t("app.cancel")}</button>
-            <button type="submit" className="btn btn-primary" disabled={savingOther} onClick={handleSaveOther}>
-              <Check size={16} /> {savingOther ? "..." : `${t("pos.pay")} — ${otherPaid.toLocaleString()} ${t("app.currency")}`}
-            </button>
-          </div>
-        </div>
       </Modal>
     </div>
   );

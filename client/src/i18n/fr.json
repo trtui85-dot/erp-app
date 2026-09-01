@@ -43,6 +43,7 @@
   "nav": {
     "dashboard": "Tableau de bord",
     "pos": "Vente",
+    "otherSales": "Vente Autre",
     "products": "Produits",
     "batches": "Batches",
     "dailyPrices": "Prix du jour",

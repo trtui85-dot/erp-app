@@ -1362,6 +1362,10 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--primary-50); border-color: var(--primary); color: var(--primary);
   font-weight: 600;
 }
+.pos-total-card {
+  background: #f8f9ff; border: 1px solid #e0e7ff; border-radius: 10px;
+  padding: 12px 16px; margin-top: 12px;
+}
 .pos-cat-pills {
   display: flex; gap: 6px; padding: 6px 0; overflow-x: auto; flex-shrink: 0;
 }

@@ -43,6 +43,7 @@
   "nav": {
     "dashboard": "لوحة القيادة",
     "pos": "البيع",
+    "otherSales": "بيع آخر",
     "products": "المنتجات",
     "batches": "الدفعات",
     "dailyPrices": "أسعار اليوم",

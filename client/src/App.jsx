@@ -17,6 +17,7 @@ import Waste from "./pages/Waste";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import POS from "./pages/POS";
+import OtherSales from "./pages/OtherSales";
 import PaymentMethods from "./pages/PaymentMethods";
 import DailyJournal from "./pages/DailyJournal";
 import Employees from "./pages/Employees";
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/waste" element={<Waste />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/pos" element={<POS />} />
+        <Route path="/otherSales" element={<OtherSales />} />
         <Route path="/paymentMethods" element={<PaymentMethods />} />
         <Route path="/dailyJournal" element={<DailyJournal />} />
         <Route path="/employees" element={<Employees />} />

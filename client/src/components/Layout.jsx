@@ -6,12 +6,13 @@ import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Package, Layers, Sun, Truck, ClipboardList,
   Users, ShoppingCart, AlertTriangle, Share2, Receipt, Trash, BarChart3,
-  Settings, LogOut, MoreHorizontal, X, ChevronDown, Globe, CreditCard, Wallet, CalendarDays, FolderTree
+  Settings, LogOut, MoreHorizontal, X, ChevronDown, Globe, CreditCard, Wallet, CalendarDays, FolderTree, ListPlus
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: LayoutDashboard },
   { key: "pos", icon: CreditCard },
+  { key: "otherSales", icon: ListPlus },
   { key: "categories", icon: FolderTree },
   { key: "products", icon: Package },
   { key: "batches", icon: Layers },
