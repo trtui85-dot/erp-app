@@ -339,7 +339,15 @@
     "invoiceSaved": "تم حفظ الفاتورة",
     "printReceipt": "طباعة الإيصال",
     "recentInvoices": "آخر الفواتير",
-    "paymentMethod": "طريقة الدفع"
+    "paymentMethod": "طريقة الدفع",
+    "otherMode": "وضع آخر",
+    "otherItems": "سلع حرة",
+    "otherProductName": "اسم المنتج",
+    "full": "دفع كامل",
+    "half": "دفع النصف",
+    "manualAmount": "مبلغ مخصص",
+    "amountDue": "المبلغ الواجب دفعه",
+    "customer": "العميل"
   },
   "paymentMethods": {
     "title": "طرق الدفع",

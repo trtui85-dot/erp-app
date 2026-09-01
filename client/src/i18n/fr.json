@@ -339,7 +339,15 @@
     "invoiceSaved": "Facture enregistrée",
     "printReceipt": "Imprimer le reçu",
     "recentInvoices": "Dernières factures",
-    "paymentMethod": "Mode de paiement"
+    "paymentMethod": "Mode de paiement",
+    "otherMode": "Mode Autre",
+    "otherItems": "Articles libres",
+    "otherProductName": "Nom du produit",
+    "full": "Paiement complet",
+    "half": "Paiement à moitié",
+    "manualAmount": "Montant personnalisé",
+    "amountDue": "Montant à payer",
+    "customer": "Client"
   },
   "paymentMethods": {
     "title": "Modes de Paiement",

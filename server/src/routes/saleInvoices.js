@@ -33,10 +33,10 @@ router.get('/:id', requireModule('saleInvoices'), async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
     const [items] = await query(`
-      SELECT sii.*, p.name as product_name, b.batch_code, b.remaining_qty as batch_remaining_qty
+      SELECT sii.*, COALESCE(sii.product_name, p.name) as product_name, b.batch_code, b.remaining_qty as batch_remaining_qty
       FROM sale_invoice_items sii
-      JOIN batches b ON sii.batch_id = b.id
-      JOIN products p ON b.product_id = p.id
+      LEFT JOIN batches b ON sii.batch_id = b.id
+      LEFT JOIN products p ON p.id = sii.product_id
       WHERE sii.invoice_id = ?
     `, [req.params.id]);
     return res.json({ ...invoices[0], items });
@@ -56,17 +56,22 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
     }
 
     for (const item of items) {
-      const [batch] = await conn.execute(
-        'SELECT * FROM batches WHERE id = ? AND status = ?',
-        [item.batch_id, 'active']
-      );
-      if (batch.length === 0) {
+      if (item.batch_id) {
+        const [batch] = await conn.execute(
+          'SELECT * FROM batches WHERE id = ? AND status = ?',
+          [item.batch_id, 'active']
+        );
+        if (batch.length === 0) {
+          await conn.rollback();
+          return res.status(400).json({ error: `Batch ${item.batch_id} not found or not active` });
+        }
+        if (parseFloat(batch[0].remaining_qty) < parseFloat(item.qty)) {
+          await conn.rollback();
+          return res.status(400).json({ error: `Insufficient stock in batch ${batch[0].batch_code || item.batch_id}. Available: ${batch[0].remaining_qty}` });
+        }
+      } else if (!item.product_name) {
         await conn.rollback();
-        return res.status(400).json({ error: `Batch ${item.batch_id} not found or not active` });
-      }
-      if (parseFloat(batch[0].remaining_qty) < parseFloat(item.qty)) {
-        await conn.rollback();
-        return res.status(400).json({ error: `Insufficient stock in batch ${batch[0].batch_code || item.batch_id}. Available: ${batch[0].remaining_qty}` });
+        return res.status(400).json({ error: 'Items need a batch_id or a product_name' });
       }
     }
 
@@ -90,19 +95,25 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
 
     for (const item of items) {
       const itemTotal = (item.qty || 0) * (item.price || 0);
+      const isFree = !item.batch_id;
+      let productId = item.product_id || null;
+      if (isFree && item.product_name) {
+        productId = null;
+      }
       await conn.execute(
-        'INSERT INTO sale_invoice_items (invoice_id, batch_id, qty, price, total) VALUES (?, ?, ?, ?, ?)',
-        [invoiceId, item.batch_id, item.qty, item.price, itemTotal]
+        'INSERT INTO sale_invoice_items (invoice_id, batch_id, product_id, product_name, qty, price, total) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [invoiceId, item.batch_id || null, productId, item.product_name || null, item.qty, item.price, itemTotal]
       );
+      if (!isFree) {
+        await conn.execute(
+          'UPDATE batches SET remaining_qty = remaining_qty - ?, sold_qty = sold_qty + ? WHERE id = ?',
+          [item.qty, item.qty, item.batch_id]
+        );
 
-      await conn.execute(
-        'UPDATE batches SET remaining_qty = remaining_qty - ?, sold_qty = sold_qty + ? WHERE id = ?',
-        [item.qty, item.qty, item.batch_id]
-      );
-
-      const [updatedBatch] = await conn.execute('SELECT remaining_qty FROM batches WHERE id = ?', [item.batch_id]);
-      if (parseFloat(updatedBatch[0].remaining_qty) <= 0) {
-        await conn.execute('UPDATE batches SET status = ? WHERE id = ?', ['sold', item.batch_id]);
+        const [updatedBatch] = await conn.execute('SELECT remaining_qty FROM batches WHERE id = ?', [item.batch_id]);
+        if (parseFloat(updatedBatch[0].remaining_qty) <= 0) {
+          await conn.execute('UPDATE batches SET status = ? WHERE id = ?', ['sold', item.batch_id]);
+        }
       }
     }
 
@@ -133,7 +144,7 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
     await conn.commit();
 
     const [invoice] = await query('SELECT * FROM sale_invoices WHERE id = ?', [invoiceId]);
-    const [invoiceItems] = await query('SELECT sii.*, p.name AS product_name FROM sale_invoice_items sii JOIN batches b ON sii.batch_id = b.id JOIN products p ON b.product_id = p.id WHERE invoice_id = ?', [invoiceId]);
+    const [invoiceItems] = await query('SELECT sii.*, COALESCE(sii.product_name, p.name) AS product_name FROM sale_invoice_items sii LEFT JOIN batches b ON sii.batch_id = b.id LEFT JOIN products p ON p.id = sii.product_id WHERE invoice_id = ?', [invoiceId]);
     return res.status(201).json({ ...invoice[0], items: invoiceItems });
   } catch (err) {
     await conn.rollback();
@@ -156,6 +167,7 @@ router.delete('/:id', requireModule('saleInvoices'), async (req, res) => {
 
     const [items] = await conn.execute('SELECT * FROM sale_invoice_items WHERE invoice_id = ?', [req.params.id]);
     for (const item of items) {
+      if (!item.batch_id) continue;
       await conn.execute(
         'UPDATE batches SET remaining_qty = remaining_qty + ?, sold_qty = sold_qty - ? WHERE id = ?',
         [item.qty, item.qty, item.batch_id]

@@ -81,7 +81,7 @@ router.get('/recent', async (req, res) => {
     const [recentSales] = await query(`
       SELECT si.id, si.date, si.total, c.name as customer_name, 'sale' as type
       FROM sale_invoices si
-      JOIN customers c ON si.customer_id = c.id
+      LEFT JOIN customers c ON si.customer_id = c.id
       ORDER BY si.date DESC LIMIT 5
     `);
 

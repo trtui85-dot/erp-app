@@ -24,10 +24,10 @@ router.get('/', async (req, res) => {
       try {
         const ids = saleInvoices.map((i) => i.id);
         [invoiceItems] = await query(`
-          SELECT sii.*, p.name AS product_name, b.batch_code, b.purchase_price
+          SELECT sii.*, COALESCE(sii.product_name, p.name) AS product_name, b.batch_code, b.purchase_price
           FROM sale_invoice_items sii
           LEFT JOIN batches b ON b.id = sii.batch_id
-          LEFT JOIN products p ON p.id = b.product_id
+          LEFT JOIN products p ON p.id = COALESCE(sii.product_id, b.product_id)
           WHERE sii.invoice_id IN (?)
         `, [ids]);
       } catch (e) { console.error('dailyJournal invoice_items:', e.message); }
