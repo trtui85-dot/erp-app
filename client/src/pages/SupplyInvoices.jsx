@@ -77,61 +77,381 @@ export default function SupplyInvoices() {
     try {
       const res = await http.get(`/supplyinvoices/${inv.id}`);
       const data = res.data;
-      const pw = window.open("", "_blank", "width=800,height=600");
+      const pw = window.open("", "_blank", "width=900,height=700");
       if (!pw) return;
       const items = data.items || [];
       const totalHT = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.purchase_price || 0), 0);
-      pw.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-      <style>
-        @page { size: A5 landscape; margin: 10mm; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif; font-size: 11px; color: #222; width: 210mm; padding: 10mm; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-bottom: 14px; }
-        .header-left h1 { font-size: 16px; color: #1a73e8; margin-bottom: 2px; }
-        .header-left p { font-size: 10px; color: #666; }
-        .header-right { text-align: right; }
-        .header-right .inv-code { font-size: 14px; font-weight: 700; color: #1a73e8; }
-        .header-right .inv-date { font-size: 10px; color: #666; margin-top: 2px; }
-        .info-row { display: flex; gap: 30px; margin-bottom: 14px; font-size: 10px; color: #555; }
-        .info-row span { font-weight: 600; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        th { background: #f0f4ff; color: #1a73e8; font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 2px solid #1a73e8; text-align: left; }
-        td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-        tr:last-child td { border-bottom: none; }
-        .text-right { text-align: right; }
-        .total-row { background: #f0f4ff; font-weight: 700; }
-        .total-row td { border-top: 2px solid #1a73e8; border-bottom: 2px solid #1a73e8; font-size: 12px; color: #1a73e8; }
-        .footer { margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 9px; color: #999; display: flex; justify-content: space-between; }
-        .notes { background: #fef7e0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 10px; color: #92400e; }
-      </style></head><body>
-      <div class="header">
-        <div class="header-left">
-          <h1>SIR Solutions Informatiques Rapides</h1>
-          <p>الإدارة التجارية — Facture d'approvisionnement</p>
-        </div>
-        <div class="header-right">
-          <div class="inv-code">${data.invoice_code || "#" + data.id}</div>
-          <div class="inv-date">${data.date}</div>
-        </div>
+      const totalVente = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.sale_price || 0), 0);
+      const margin = totalVente - totalHT;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("ar-MR", { year: "numeric", month: "long", day: "numeric" });
+      const timeStr = now.toLocaleTimeString("ar-MR", { hour: "2-digit", minute: "2-digit" });
+
+      pw.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 15mm 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Calibri', 'Arial', sans-serif;
+    font-size: 11pt;
+    color: #1a1a2e;
+    background: #fff;
+    direction: rtl;
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .page {
+    width: 170mm;
+    min-height: 257mm;
+    margin: 0 auto;
+    padding: 15mm 0;
+  }
+
+  /* === HEADER === */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #1a73e8;
+    margin-bottom: 25px;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #1a73e8;
+  }
+
+  .company-info {
+    text-align: right;
+  }
+  .company-name {
+    font-size: 22pt;
+    font-weight: 700;
+    color: #1a73e8;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .company-sub {
+    font-size: 10pt;
+    color: #555;
+    margin-bottom: 2px;
+  }
+  .company-contact {
+    font-size: 9pt;
+    color: #888;
+  }
+
+  .invoice-badge {
+    background: linear-gradient(135deg, #1a73e8, #4a9af5);
+    color: white;
+    padding: 14px 24px;
+    border-radius: 10px;
+    text-align: center;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+  }
+  .invoice-badge-title {
+    font-size: 10pt;
+    opacity: 0.9;
+    margin-bottom: 4px;
+  }
+  .invoice-badge-code {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  /* === INFO BOX === */
+  .info-box {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+  .info-card {
+    flex: 1;
+    background: #f8f9ff;
+    border: 1px solid #e0e7ff;
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .info-card-label {
+    font-size: 9pt;
+    color: #888;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .info-card-value {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+
+  /* === TABLE === */
+  .items-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e0e7ff;
+  }
+  .items-table thead th {
+    background: #1a73e8;
+    color: white;
+    font-size: 9pt;
+    font-weight: 600;
+    padding: 12px 14px;
+    text-align: right;
+    letter-spacing: 0.5px;
+  }
+  .items-table thead th:first-child {
+    text-align: center;
+    width: 40px;
+  }
+  .items-table thead th:last-child {
+    text-align: left;
+  }
+  .items-table tbody td {
+    padding: 11px 14px;
+    font-size: 10.5pt;
+    border-bottom: 1px solid #f0f0f5;
+    color: #333;
+  }
+  .items-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .items-table tbody tr:nth-child(even) {
+    background: #fafbff;
+  }
+  .items-table tbody td:first-child {
+    text-align: center;
+    font-weight: 600;
+    color: #1a73e8;
+  }
+  .items-table tbody td:last-child {
+    text-align: left;
+    font-weight: 600;
+  }
+
+  /* === TOTALS === */
+  .totals-section {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 25px;
+  }
+  .totals-box {
+    width: 280px;
+    border: 2px solid #1a73e8;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: 10pt;
+  }
+  .totals-row:not(:last-child) {
+    border-bottom: 1px solid #f0f0f5;
+  }
+  .totals-row.grand {
+    background: #1a73e8;
+    color: white;
+    font-weight: 700;
+    font-size: 12pt;
+    padding: 12px 16px;
+  }
+  .totals-label {
+    color: #555;
+  }
+  .totals-row.grand .totals-label {
+    color: white;
+  }
+  .totals-value {
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+  .totals-row.grand .totals-value {
+    color: white;
+  }
+  .margin-row {
+    background: #e8f5e9;
+  }
+  .margin-row .totals-value {
+    color: #2e7d32;
+  }
+
+  /* === NOTES === */
+  .notes-box {
+    background: #fffde7;
+    border: 1px solid #fff9c4;
+    border-right: 4px solid #f9a825;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 25px;
+    font-size: 10pt;
+    color: #5d4037;
+  }
+  .notes-label {
+    font-weight: 600;
+    color: #e65100;
+    margin-left: 6px;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 2px solid #e0e7ff;
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .footer-right {
+    text-align: right;
+  }
+  .footer-left {
+    text-align: left;
+  }
+  .footer-brand {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #1a73e8;
+    margin-bottom: 4px;
+  }
+  .footer-sub {
+    font-size: 8pt;
+    color: #999;
+  }
+  .footer-date {
+    font-size: 8pt;
+    color: #999;
+    text-align: left;
+  }
+  .stamp-area {
+    margin-top: 30px;
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+  }
+  .stamp-box {
+    flex: 1;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: #bbb;
+    font-size: 9pt;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="company-info">
+      <div class="company-name">SIR Solutions Informatiques Rapides</div>
+      <div class="company-sub">الإدارة التجارية — نظام إدارة المبيعات والمشتريات</div>
+      <div class="company-contact">هاتف: 22222222 | البريد: contact@sir.mr</div>
+    </div>
+    <div class="invoice-badge">
+      <div class="invoice-badge-title">فاتورة شراء</div>
+      <div class="invoice-badge-code">${data.invoice_code || "#" + data.id}</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-card">
+      <div class="info-card-label">المورد</div>
+      <div class="info-card-value">${data.supplier_name || "—"}</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">تاريخ الفاتورة</div>
+      <div class="info-card-value">${data.date || "—"}</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">عدد الأصناف</div>
+      <div class="info-card-value">${items.length} صنف</div>
+    </div>
+  </div>
+
+  ${data.notes ? '<div class="notes-box"><span class="notes-label">ملاحظة:</span>' + data.notes + '</div>' : ''}
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الصنف</th>
+        <th>الكمية</th>
+        <th>الوحدة</th>
+        <th>سعر الشراء</th>
+        <th>سعر البيع</th>
+        <th>المجموع الفرعي</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map((it, i) => '<tr><td>' + (i + 1) + '</td><td>' + (it.product_name || "") + '</td><td>' + Number(it.qty || 0).toLocaleString() + '</td><td>' + (it.unit || "") + '</td><td>' + Number(it.purchase_price || 0).toLocaleString() + ' MRU</td><td>' + Number(it.sale_price || 0).toLocaleString() + ' MRU</td><td>' + Number((it.qty || 0) * (it.purchase_price || 0)).toLocaleString() + ' MRU</td></tr>').join('')}
+    </tbody>
+  </table>
+
+  <div class="totals-section">
+    <div class="totals-box">
+      <div class="totals-row">
+        <span class="totals-label">المجموع الفرعي (شراء)</span>
+        <span class="totals-value">${totalHT.toLocaleString()} MRU</span>
       </div>
-      <div class="info-row">
-        <div>Fournisseur: <span>${data.supplier_name || "—"}</span></div>
-        <div>Articles: <span>${items.length}</span></div>
+      <div class="totals-row">
+        <span class="totals-label">المجموع الفرعي (بيع)</span>
+        <span class="totals-value">${totalVente.toLocaleString()} MRU</span>
       </div>
-      ${data.notes ? '<div class="notes">📝 ' + data.notes + '</div>' : ''}
-      <table>
-        <thead><tr>
-          <th>#</th><th>Produit</th><th>Qté</th><th>Unité</th><th class="text-right">Prix Achat</th><th class="text-right">Prix Vente</th><th class="text-right">Sous-total</th>
-        </tr></thead>
-        <tbody>
-          ${items.map((it, i) => '<tr><td>' + (i + 1) + '</td><td>' + (it.product_name || "") + '</td><td>' + it.qty + '</td><td>' + (it.unit || "") + '</td><td class="text-right">' + Number(it.purchase_price || 0).toLocaleString() + '</td><td class="text-right">' + Number(it.sale_price || 0).toLocaleString() + '</td><td class="text-right">' + Number((it.qty || 0) * (it.purchase_price || 0)).toLocaleString() + '</td></tr>').join('')}
-          <tr class="total-row"><td colspan="6" class="text-right">TOTAL</td><td class="text-right">${totalHT.toLocaleString()} MRU</td></tr>
-        </tbody>
-      </table>
-      <div class="footer"><span>SIR.MR — Solutions Informatiques Rapides</span><span>Impression: ${new Date().toLocaleString("fr-FR")}</span></div>
-      </body></html>`);
+      <div class="totals-row margin-row">
+        <span class="totals-label">هامش الربح</span>
+        <span class="totals-value">${margin.toLocaleString()} MRU</span>
+      </div>
+      <div class="totals-row grand">
+        <span class="totals-label">المجموع الكلي</span>
+        <span class="totals-value">${totalHT.toLocaleString()} MRU</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stamp-area">
+    <div class="stamp-box">ختم المورد</div>
+    <div class="stamp-box">ختم الشركة</div>
+    <div class="stamp-box">توقيع المستلم</div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-right">
+      <div class="footer-brand">SIR Solutions Informatiques Rapides</div>
+      <div class="footer-sub">SIR.MR — نظام الإدارة التجارية</div>
+    </div>
+    <div class="footer-left">
+      <div class="footer-date">${dateStr} — ${timeStr}</div>
+      <div class="footer-sub">تمت الطباعة عبر نظام SIR ERP</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`);
       pw.document.close();
-      setTimeout(() => { pw.print(); }, 400);
+      setTimeout(() => { pw.print(); }, 500);
     } catch (err) { toast.error("Erreur impression"); }
   };
 
