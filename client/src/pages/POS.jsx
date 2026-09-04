@@ -171,7 +171,7 @@ export default function POS() {
       if (!pw) return;
       pw.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
         <style>@page{size:72mm auto;margin:2mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Courier New',monospace;font-size:10px;width:68mm;padding:2mm;text-align:center;color:#111;}.line{border-top:1px dashed #999;margin:3mm 0;}.bold{font-weight:700;font-size:11px;}.small{font-size:8px;color:#666;}table{width:100%;border-collapse:collapse;margin:2mm 0;}td,th{padding:1mm 0;font-size:9px;text-align:left;}th{border-bottom:1px solid #111;font-size:8px;text-transform:uppercase;}.r{text-align:right;}</style></head><body>
-        <div class="bold" style="font-size:14px;">${t("app.title")}</div>
+        <div class="bold" style="font-size:14px;">مؤسسة احمد سالم سيده</div>
         <div class="small">${data.date} | ${data.invoice_code || ""}</div>
         <div class="line"></div>
         <div class="small">Client: ${data.customer_name || ""}</div>
@@ -228,7 +228,7 @@ export default function POS() {
       .r{text-align:right;}
       .total-line{border-top:2px solid #111;font-weight:700;font-size:12px;padding-top:2mm;}
     </style></head><body>
-    <div class="bold" style="font-size:14px;">${t("app.title")}</div>
+    <div class="bold" style="font-size:14px;">مؤسسة احمد سالم سيده</div>
     <div class="small">${date} | ${code}</div>
     <div class="line"></div>
     <div class="small">Client: ${custName}</div>

@@ -119,7 +119,7 @@ export default function OtherSales() {
       th{border-bottom:1px solid #111;font-size:8px;text-transform:uppercase;}
       .r{text-align:right;}
     </style></head><body>
-    <div class="bold" style="font-size:14px;">${t("app.title")}</div>
+    <div class="bold" style="font-size:14px;">مؤسسة احمد سالم سيده</div>
     <div class="small">${t("pos.otherMode")} | ${date} | ${code}</div>
     <div class="line"></div>
     <div class="small">${t("pos.customer")}: ${custName}</div>
