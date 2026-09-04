@@ -491,20 +491,14 @@ async function migrate() {
       `);
     }
 
-    // === ONE-TIME: REPLACE OLD PRODUCTS WITH NEW HASSANIYA PRODUCTS ===
-    const oldCheck = await conn.query(`SELECT COUNT(*) AS c FROM products WHERE name IN ('Tomates','Oignons','Riz importé')`);
-    if (Number(oldCheck.rows[0].c) > 0) {
-      console.log('Migration: replacing old French products with Hassaniya products...');
-      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-      await conn.query('DELETE FROM batches');
-      await conn.query('DELETE FROM sale_invoices');
-      await conn.query('DELETE FROM supply_invoices');
-      await conn.query('DELETE FROM products');
-    }
-
-    const prodCheck2 = await conn.query('SELECT COUNT(*) AS c FROM products');
-    if (Number(prodCheck2.rows[0].c) === 0) {
+    // === ALWAYS: delete old + reseed Hassaniya products ===
+    console.log('Migration: clearing and reseeding products...');
+    await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+    await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+    await conn.query('DELETE FROM batches');
+    await conn.query('DELETE FROM sale_invoices');
+    await conn.query('DELETE FROM supply_invoices');
+    await conn.query('DELETE FROM products');
 
     // Get category IDs
     const cats = await conn.query('SELECT id, name_ar FROM categories');
@@ -557,7 +551,6 @@ async function migrate() {
       ('الشوكولاتة', 'pack', 'fixed', 400, 20, 180, ${catMap['مواد غذائية أخرى'] || 5})
     `);
     console.log('Seed: 39 products inserted');
-    }
 
     const supCheck = await conn.query('SELECT COUNT(*) AS c FROM suppliers');
     if (Number(supCheck.rows[0].c) === 0) {
