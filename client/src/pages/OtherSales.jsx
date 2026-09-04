@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { http } from "../api";
@@ -6,7 +6,8 @@ import { useToast } from "../components/toast";
 import { PageLoader, SearchSelect } from "../components/ui";
 import { Plus, Trash2, Check, X, Wallet, Smartphone, CreditCard, Building2, Send, Banknote, Printer, ChevronLeft, ListPlus } from "lucide-react";
 
-const emptyOtherItem = { product_name: "", qty: 1, price: "" };
+const emptyOtherItem = { product_name: "", unit: "kg", qty: 1, price: "" };
+const UNITS = ["kg", "g", "caissi", "sac", "pièce", "carton", "bouteille", "lot"];
 
 const METHOD_ICONS = { Wallet, Smartphone, CreditCard, Building2, Send, Banknote };
 
@@ -16,6 +17,7 @@ export default function OtherSales() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([{ ...emptyOtherItem }]);
   const [payment, setPayment] = useState(null);
@@ -23,20 +25,37 @@ export default function OtherSales() {
   const [customer, setCustomer] = useState(null);
   const [saving, setSaving] = useState(false);
   const [lastInvoice, setLastInvoice] = useState(null);
+  const [openSuggest, setOpenSuggest] = useState(-1);
+  const suggestRef = useRef(null);
 
   useEffect(() => {
     Promise.all([
       http.get("/customers").catch(() => ({ data: [] })),
       http.get("/paymentmethods").catch(() => ({ data: [] })),
-    ]).then(([cRes, pmRes]) => {
+      http.get("/products").catch(() => ({ data: [] })),
+    ]).then(([cRes, pmRes, pRes]) => {
       setCustomers(cRes.data);
       setPaymentMethods(pmRes.data);
+      setProducts(pRes.data);
       if (pmRes.data.length > 0) setPayment(pmRes.data[0]);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const productNames = products.map((p) => p.name);
+
   const updateItem = (idx, field, value) => {
     setItems(items.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  };
+
+  const pickExisting = (idx, name) => {
+    const prod = products.find((p) => p.name === name);
+    setItems(items.map((it, i) => i === idx ? {
+      ...it,
+      product_name: name,
+      unit: prod?.unit || it.unit,
+      price: prod?.current_sale_price ? prod.current_sale_price : it.price,
+    } : it));
+    setOpenSuggest(-1);
   };
 
   const total = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.price || 0), 0);
@@ -47,18 +66,31 @@ export default function OtherSales() {
     if (valid.length === 0) return toast.error(t("pos.cartEmpty"));
     setSaving(true);
     try {
+      const existingNames = new Set(products.map((p) => p.name.trim().toLowerCase()));
+      const toCreate = valid.filter((it) => !existingNames.has(it.product_name.trim().toLowerCase()));
+      for (const it of toCreate) {
+        try {
+          await http.post("/products", {
+            name: it.product_name.trim(),
+            unit: it.unit || "kg",
+            price_type: "fixed",
+            current_sale_price: Number(it.price) || 0,
+          });
+        } catch {}
+      }
       const payload = {
         customer_id: customer?.id || null,
         date: new Date().toISOString().split("T")[0],
         type: "other",
         paid,
         payment_method_id: payment?.id || null,
-        items: valid.map((it) => ({ product_name: it.product_name.trim(), qty: Number(it.qty), price: Number(it.price) })),
+        items: valid.map((it) => ({ product_name: it.product_name.trim(), unit: it.unit || "kg", qty: Number(it.qty), price: Number(it.price) })),
       };
       const res = await http.post("/saleinvoices", payload);
       setLastInvoice(res.data);
       toast.success("✓ " + t("pos.invoiceSaved"));
       setItems([{ ...emptyOtherItem }]);
+      http.get("/products").then((d) => setProducts(d.data)).catch(() => {});
     } catch (err) { toast.error(err.message || "Erreur"); }
     finally { setSaving(false); }
   };
@@ -95,7 +127,7 @@ export default function OtherSales() {
     <div class="line"></div>
     <table>
       <tr><th>${t("pos.article")}</th><th class="r">${t("pos.qty")}</th><th class="r">${t("pos.price")}</th><th class="r">${t("pos.total")}</th></tr>
-      ${itemsToPrint.map((it) => `<tr><td>${it.product_name || ""}</td><td class="r">${Number(it.qty).toLocaleString()}</td><td class="r">${Number(it.price).toLocaleString()}</td><td class="r">${(Number(it.qty) * Number(it.price)).toLocaleString()}</td></tr>`).join("")}
+      ${itemsToPrint.map((it) => `<tr><td>${it.product_name || ""}</td><td class="r">${Number(it.qty).toLocaleString()}${it.unit ? " " + it.unit : ""}</td><td class="r">${Number(it.price).toLocaleString()}</td><td class="r">${(Number(it.qty) * Number(it.price)).toLocaleString()}</td></tr>`).join("")}
     </table>
     <div class="line"></div>
     <table>
@@ -122,17 +154,39 @@ export default function OtherSales() {
 
       <div className="section">
         <div className="section-title" style={{ marginBottom: 10 }}>{t("pos.otherItems")} — {items.length}</div>
-        {items.map((it, idx) => (
-          <div key={idx} className="pos-other-row">
-            <input className="input-other" style={{ flex: 3 }} placeholder={t("pos.otherProductName")} value={it.product_name}
-              onChange={(e) => updateItem(idx, "product_name", e.target.value)} />
-            <input className="input-other" style={{ flex: 1 }} type="number" placeholder={t("pos.price")} value={it.price}
-              onChange={(e) => updateItem(idx, "price", e.target.value)} />
-            <input className="input-other" style={{ flex: 1 }} type="number" placeholder={t("pos.qty")} value={it.qty}
-              onChange={(e) => updateItem(idx, "qty", e.target.value)} />
-            <button type="button" className="icon-btn icon-btn-danger" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 size={16} /></button>
-          </div>
-        ))}
+        {items.map((it, idx) => {
+          const suggestions = it.product_name.trim()
+            ? productNames.filter((n) => n.toLowerCase().includes(it.product_name.trim().toLowerCase())).slice(0, 6)
+            : productNames.slice(0, 6);
+          return (
+            <div key={idx} className="pos-other-card" ref={(el) => { if (idx === openSuggest) suggestRef.current = el; }}>
+              <div className="pos-other-suggest-wrap">
+                <input className="input-other" style={{ width: "100%" }} placeholder={t("pos.otherProductName")} value={it.product_name}
+                  onChange={(e) => { updateItem(idx, "product_name", e.target.value); setOpenSuggest(idx); }}
+                  onFocus={() => setOpenSuggest(idx)} />
+                {openSuggest === idx && suggestions.length > 0 && (
+                  <div className="pos-other-suggest">
+                    {suggestions.map((n) => (
+                      <button type="button" key={n} className="pos-other-suggest-item" onClick={() => pickExisting(idx, n)}>{n}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="pos-other-units">
+                {UNITS.map((u) => (
+                  <button key={u} type="button" className={`pos-unit-btn${it.unit === u ? " active" : ""}`} onClick={() => updateItem(idx, "unit", u)}>{u}</button>
+                ))}
+              </div>
+              <div className="pos-other-fields">
+                <input className="input-other" style={{ flex: 1 }} type="number" step="any" min="0" placeholder={t("pos.qty")} value={it.qty}
+                  onChange={(e) => updateItem(idx, "qty", e.target.value)} />
+                <input className="input-other" style={{ flex: 1 }} type="number" step="any" min="0" placeholder={t("pos.price")} value={it.price}
+                  onChange={(e) => updateItem(idx, "price", e.target.value)} />
+                <button type="button" className="icon-btn icon-btn-danger" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 size={16} /></button>
+              </div>
+            </div>
+          );
+        })}
         <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 4 }} onClick={() => setItems([...items, { ...emptyOtherItem }])}>
           <Plus size={14} /> {t("supplyInvoices.addItem")}
         </button>

@@ -156,7 +156,22 @@
     "noData": "Aucune facture",
     "batchCreated": "Batches créés automatiquement",
     "addItem": "Ajouter un article",
-    "selectSupplier": "Sélectionner un fournisseur"
+    "selectSupplier": "Sélectionner un fournisseur",
+    "noSold": "Aucune vente pour cette période",
+    "alreadyAdded": "Produit déjà ajouté",
+    "soldAdded": "Produits vendus ajoutés",
+    "quickAdd": "Ajouter produits vendus",
+    "today": "Aujourd'hui",
+    "fourDays": "4 jours",
+    "week": "Semaine",
+    "searchProduct": "Rechercher un produit...",
+    "noItemsHint": "Sélectionnez des produits vendus ou recherchez et ajoutez",
+    "costMode": "Mode de coût",
+    "costPer": "Prix par produit",
+    "costTotal": "Coût total",
+    "totalCost": "Coût total de la facture",
+    "totalDistributed": "Réparti automatiquement selon les quantités",
+    "noItems": "Ajoutez des produits d'abord"
   },
   "customers": {
     "title": "Clients",

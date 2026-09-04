@@ -266,6 +266,7 @@ async function migrate() {
       batch_id INT NULL,
       product_id INT NULL,
       product_name VARCHAR(200) NULL,
+      unit VARCHAR(30) NULL,
       qty DECIMAL(12,2),
       price DECIMAL(12,2),
       total DECIMAL(12,2),
@@ -449,6 +450,7 @@ async function migrate() {
     await conn.query(`ALTER TABLE sale_invoice_items ALTER COLUMN batch_id DROP NOT NULL`);
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_id INT NULL`);
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_name VARCHAR(200) NULL`);
+    await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(30) NULL`);
 
     const adminCheck = await conn.query('SELECT id FROM users WHERE phone = $1', ['22222222']);
     if (adminCheck.rows.length === 0) {

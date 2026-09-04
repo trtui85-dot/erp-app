@@ -23,6 +23,32 @@ router.get('/', requireModule('products'), async (req, res) => {
   }
 });
 
+router.get('/sold', requireModule('products'), async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 1;
+    const [sold] = await query(`
+      SELECT
+        p.id as product_id,
+        p.name as product_name,
+        p.unit,
+        p.current_sale_price,
+        COALESCE(SUM(sii.qty), 0) as qty_sold,
+        COALESCE(SUM(sii.total), 0) as sales_total
+      FROM sale_invoice_items sii
+      JOIN sale_invoices si ON si.id = sii.invoice_id
+      JOIN batches b ON b.id = sii.batch_id
+      JOIN products p ON p.id = b.product_id
+      WHERE si.date >= CURRENT_DATE - ?::int * INTERVAL '1 day'
+      GROUP BY p.id, p.name, p.unit, p.current_sale_price
+      ORDER BY qty_sold DESC
+    `, [days]);
+    return res.json(sold);
+  } catch (err) {
+    console.error('List sold products error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 router.get('/:id', requireModule('products'), async (req, res) => {
   try {
     const [products] = await query('SELECT * FROM products WHERE id = ? AND active = 1', [req.params.id]);
