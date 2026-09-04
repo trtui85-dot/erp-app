@@ -491,21 +491,23 @@ async function migrate() {
       `);
     }
 
-    // === ALWAYS: delete old + reseed Hassaniya products ===
-    console.log('Migration: clearing and reseeding products...');
-    await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-    await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-    await conn.query('DELETE FROM batches');
-    await conn.query('DELETE FROM sale_invoices');
-    await conn.query('DELETE FROM supply_invoices');
-    await conn.query('DELETE FROM products');
+    // === ONE-TIME: replace old products with Hassaniya catalog ===
+    const prodCount = await conn.query('SELECT COUNT(*) AS c FROM products');
+    const hasOldProducts = await conn.query(`SELECT COUNT(*) AS c FROM products WHERE name ~ '[A-Za-z]'`);
+    if (Number(prodCount.rows[0].c) === 0 || Number(hasOldProducts.rows[0].c) > 0) {
+      console.log('Migration: reseeding Hassaniya products...');
+      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+      await conn.query('DELETE FROM batches');
+      await conn.query('DELETE FROM sale_invoices');
+      await conn.query('DELETE FROM supply_invoices');
+      await conn.query('DELETE FROM products');
 
-    // Get category IDs
-    const cats = await conn.query('SELECT id, name_ar FROM categories');
-    const catMap = {};
-    for (const c of cats.rows) catMap[c.name_ar] = c.id;
+      const cats = await conn.query('SELECT id, name_ar FROM categories');
+      const catMap = {};
+      for (const c of cats.rows) catMap[c.name_ar] = c.id;
 
-    await conn.query(`INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES
+      await conn.query(`INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES
       -- 🥬 الخضروات
       ('تماته', 'bouteille', 'fixed', 350, 20, 5, ${catMap['الخضروات'] || 1}),
       ('بومپتير', 'sac', 'fixed', 250, 40, 21, ${catMap['الخضروات'] || 1}),
@@ -551,6 +553,7 @@ async function migrate() {
       ('الشوكولاتة', 'pack', 'fixed', 400, 20, 180, ${catMap['مواد غذائية أخرى'] || 5})
     `);
     console.log('Seed: 39 products inserted');
+    }
 
     const supCheck = await conn.query('SELECT COUNT(*) AS c FROM suppliers');
     if (Number(supCheck.rows[0].c) === 0) {
