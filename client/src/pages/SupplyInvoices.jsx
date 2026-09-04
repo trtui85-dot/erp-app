@@ -1,34 +1,45 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, DataTable, SearchSelect } from "../components/ui";
-import { Plus, Trash2, ClipboardList, Printer, Search, ChevronLeft, CalendarDays, UserPlus, X, Check, PackagePlus } from "lucide-react";
+import { Plus, Trash2, ClipboardList, Printer, Search, ChevronLeft, X, Check } from "lucide-react";
 
-const UNIT_OPTS = ["kg", "sac", "bouteille", "poche", "pack"];
+const UNIT_OPTS = ["كيل", "كيس", "الربطة", "بكط", "بطة", "بوش"];
 
-function ProductPicker({ options, onPick }) {
+function ProductGrid({ products, categories, selectedCat, setSelectedCat, onPick }) {
   const { t } = useTranslation();
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const results = (options || []).filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+  const filtered = useMemo(() => {
+    const list = (products || []).filter(
+      (p) => (!q || p.name.includes(q)) && (!selectedCat || p.category_id === selectedCat)
+    );
+    return list;
+  }, [products, q, selectedCat]);
   return (
-    <div style={{ position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--gray-200)", borderRadius: "var(--radius-sm)", padding: "4px 10px", background: "white" }}>
-        <Search size={16} style={{ color: "var(--gray-400)" }} />
-        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} placeholder={t("supplyInvoices.searchProduct") || "بحث عن منتج..."} style={{ flex: 1, padding: "8px 0", fontSize: "0.9rem" }} />
+    <div className="pos-grid-wrap">
+      <div className="pos-search" style={{ padding: "8px" }}>
+        <Search size={16} style={{ color: "var(--gray-400)", flexShrink: 0 }} />
+        <input className="search-input" placeholder={t("supplyInvoices.searchProduct") || "بحث عن منتج..."} value={q} onChange={(e) => setQ(e.target.value)} />
         {q && <X size={14} style={{ cursor: "pointer" }} onClick={() => setQ("")} />}
       </div>
-      {open && results.length > 0 && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 30, background: "white", border: "1px solid var(--gray-200)", borderRadius: "var(--radius-sm)", boxShadow: "var(--shadow-lg)", maxHeight: 240, overflowY: "auto", marginTop: 4 }}>
-          {results.map((p) => (
-            <button key={p.id} type="button" style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "10px 12px", textAlign: "right", borderBottom: "1px solid var(--gray-100)" }} onClick={() => { onPick(p); setQ(""); setOpen(false); }}>
-              <span style={{ fontWeight: 500 }}>{p.name}</span>
-              {p.unit && <span style={{ color: "var(--gray-400)", fontSize: "0.78rem" }}>{p.unit}</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="pos-cat-chips">
+        <button type="button" className={`pos-cat-chip${!selectedCat ? " active" : ""}`} onClick={() => setSelectedCat(null)}>الكل</button>
+        {categories.map((c) => (
+          <button key={c.id} type="button" className={`pos-cat-chip${selectedCat === c.id ? " active" : ""}`} onClick={() => setSelectedCat(selectedCat === c.id ? null : c.id)}>
+            {c.name_ar || c.name}
+          </button>
+        ))}
+      </div>
+      <div className="pos-grid">
+        {filtered.map((p) => (
+          <button key={p.id} type="button" className="pos-grid-item" onClick={() => onPick(p)}>
+            <span className="pos-grid-name">{p.name}</span>
+            <span className="pos-grid-unit">{p.unit}</span>
+          </button>
+        ))}
+        {filtered.length === 0 && <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--gray-400)", padding: 20 }}>{t("supplyInvoices.searchProduct") || "لا توجد منتجات"}</div>}
+      </div>
     </div>
   );
 }
@@ -39,6 +50,8 @@ export default function SupplyInvoices() {
   const [invoices, setInvoices] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCat, setSelectedCat] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -56,14 +69,16 @@ export default function SupplyInvoices() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, supRes, prodRes] = await Promise.all([
+      const [invRes, supRes, prodRes, catRes] = await Promise.all([
         http.get("/supplyinvoices"),
         http.get("/suppliers"),
         http.get("/products"),
+        http.get("/categories").catch(() => ({ data: [] })),
       ]);
       setInvoices(invRes.data);
       setSuppliers(supRes.data);
       setProducts(prodRes.data);
+      setCategories(catRes.data);
     } catch {}
     finally { setLoading(false); }
   };
@@ -168,98 +183,109 @@ export default function SupplyInvoices() {
       const totalHT = printItems.reduce((s, it) => s + Number(it.qty || 0) * Number(it.purchase_price || 0), 0);
       const totalVente = printItems.reduce((s, it) => s + Number(it.qty || 0) * Number(it.sale_price || 0), 0);
       const margin = totalVente - totalHT;
-      const now = new Date();
-      const dateStr = now.toLocaleDateString("ar-MR", { year: "numeric", month: "long", day: "numeric" });
-      const timeStr = now.toLocaleTimeString("ar-MR", { hour: "2-digit", minute: "2-digit" });
+      const dateP = data.date || "";
+      const rows = printItems.length ? printItems : [];
 
       pw.document.write(`<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 15mm 20mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; color: #1a1a2e; background: #fff; direction: rtl; text-align: right; line-height: 1.6; }
-  .page { width: 170mm; min-height: 257mm; margin: 0 auto; padding: 15mm 0; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #1a73e8; margin-bottom: 25px; position: relative; }
-  .header::after { content: ''; position: absolute; bottom: -6px; left: 0; right: 0; height: 1px; background: #1a73e8; }
-  .company-info { text-align: right; }
-  .company-name { font-size: 22pt; font-weight: 700; color: #1a73e8; margin-bottom: 4px; }
-  .company-sub { font-size: 10pt; color: #555; margin-bottom: 2px; }
-  .company-contact { font-size: 9pt; color: #888; }
-  .invoice-badge { background: linear-gradient(135deg, #1a73e8, #4a9af5); color: white; padding: 14px 24px; border-radius: 10px; text-align: center; min-width: 160px; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
-  .invoice-badge-title { font-size: 10pt; opacity: 0.9; margin-bottom: 4px; }
-  .invoice-badge-code { font-size: 16pt; font-weight: 700; }
-  .info-box { display: flex; gap: 20px; margin-bottom: 25px; }
-  .info-card { flex: 1; background: #f8f9ff; border: 1px solid #e0e7ff; border-radius: 10px; padding: 14px 18px; }
-  .info-card-label { font-size: 9pt; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
-  .info-card-value { font-size: 12pt; font-weight: 600; color: #1a1a2e; }
-  .items-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid #e0e7ff; }
-  .items-table thead th { background: #1a73e8; color: white; font-size: 9pt; font-weight: 600; padding: 12px 14px; text-align: right; }
-  .items-table thead th:first-child { text-align: center; width: 40px; }
-  .items-table tbody td { padding: 11px 14px; font-size: 10.5pt; border-bottom: 1px solid #f0f0f5; color: #333; }
-  .items-table tbody tr:last-child td { border-bottom: none; }
-  .items-table tbody tr:nth-child(even) { background: #fafbff; }
-  .items-table tbody td:first-child { text-align: center; font-weight: 600; color: #1a73e8; }
-  .totals-section { display: flex; justify-content: flex-start; margin-bottom: 25px; }
-  .totals-box { width: 280px; border: 2px solid #1a73e8; border-radius: 10px; overflow: hidden; }
-  .totals-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 10pt; }
-  .totals-row:not(:last-child) { border-bottom: 1px solid #f0f0f5; }
-  .totals-row.grand { background: #1a73e8; color: white; font-weight: 700; font-size: 12pt; padding: 12px 16px; }
-  .totals-label { color: #555; }
-  .totals-row.grand .totals-label { color: white; }
-  .totals-value { font-weight: 600; color: #1a1a2e; }
-  .totals-row.grand .totals-value { color: white; }
-  .margin-row { background: #e8f5e9; }
-  .margin-row .totals-value { color: #2e7d32; }
-  .notes-box { background: #fffde7; border: 1px solid #fff9c4; border-right: 4px solid #f9a825; border-radius: 8px; padding: 12px 16px; margin-bottom: 25px; font-size: 10pt; color: #5d4037; }
-  .notes-label { font-weight: 600; color: #e65100; margin-left: 6px; }
-  .footer { border-top: 2px solid #e0e7ff; padding-top: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .footer-right { text-align: right; }
-  .footer-left { text-align: left; }
-  .footer-brand { font-size: 11pt; font-weight: 700; color: #1a73e8; margin-bottom: 4px; }
-  .footer-sub { font-size: 8pt; color: #999; }
-  .footer-date { font-size: 8pt; color: #999; }
-  .stamp-area { margin-top: 30px; display: flex; justify-content: space-between; gap: 40px; }
-  .stamp-box { flex: 1; border: 1px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; color: #bbb; font-size: 9pt; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+  * { box-sizing: border-box; }
+  @page { size: A4; margin: 0; }
+  body { margin: 0; padding: 20px; background: #e9edf2; font-family: "Cairo", Arial, sans-serif; color: #123b70; }
+  .invoice { width: 210mm; min-height: 297mm; margin: auto; background: #fff; position: relative; overflow: hidden; border: 1px solid #123b70; padding: 12mm; }
+  .top-decoration { position: absolute; top: 0; right: 0; left: 0; height: 35px; background: #123b70; clip-path: polygon(0 0,100% 0,100% 100%,75% 100%,70% 50%,45% 100%,0 100%); }
+  .footer-decoration { position: absolute; bottom: 0; right: 0; left: 0; height: 34px; background: #123b70; clip-path: polygon(0 40%,18% 0,48% 75%,72% 10%,100% 0,100% 100%,0 100%); }
+  .header { margin-top: 15px; border-bottom: 3px solid #123b70; padding-bottom: 10px; position: relative; }
+  .header-content { display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; gap: 15px; }
+  .contact { text-align: center; font-size: 15px; font-weight: 700; line-height: 2; }
+  .contact-row { display: flex; justify-content: center; align-items: center; gap: 7px; }
+  .icon { width: 23px; height: 23px; border-radius: 50%; background: #123b70; color: white; display: inline-flex; justify-content: center; align-items: center; font-size: 13px; }
+  .institution { text-align: center; }
+  .institution-small { font-size: 19px; font-weight: 700; margin-bottom: 0; }
+  .institution-name { font-size: 26px; font-weight: 900; line-height: 1.25; margin: 0; }
+  .institution-line { width: 80%; height: 3px; background: #123b70; margin: 7px auto; position: relative; }
+  .institution-line::after { content: ""; width: 9px; height: 9px; background: #123b70; transform: rotate(45deg); position: absolute; left: 50%; top: -3px; }
+  .invoice-title { background: #123b70; color: white; padding: 10px 18px; text-align: center; font-size: 20px; font-weight: 800; position: relative; clip-path: polygon(8% 0,100% 0,100% 100%,8% 100%,0 50%); }
+  .invoice-title span { display: block; }
+  .invoice-info { margin-top: 8px; text-align: center; font-size: 14px; font-weight: 700; line-height: 2; }
+  .line { display: inline-block; min-width: 95px; border-bottom: 1px dotted #555; margin-right: 5px; }
+  .supplier { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 30px; font-size: 14px; font-weight: 700; }
+  .field { border-bottom: 1px dotted #777; padding-bottom: 4px; min-height: 30px; }
+  .products { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+  .products th { background: #123b70; color: #fff; padding: 8px 4px; border: 1px solid #123b70; font-weight: 800; white-space: nowrap; }
+  .products td { height: 27px; border: 1px solid #a9b8ca; text-align: center; padding: 3px; }
+  .products tbody tr:nth-child(even) { background: #f7f9fc; }
+  .number { width: 35px; }
+  .product-name { width: 36%; text-align: right !important; padding-right: 8px !important; }
+  .unit { width: 12%; }
+  .quantity { width: 12%; }
+  .unit-price { width: 16%; }
+  .total { width: 18%; }
+  .bottom { margin-top: 14px; display: grid; grid-template-columns: 1fr 1.5fr; gap: 28px; align-items: start; }
+  .summary { border: 1px solid #9baabd; width: 100%; }
+  .summary-row { display: grid; grid-template-columns: 1fr 105px; min-height: 32px; border-bottom: 1px solid #fff; }
+  .summary-row:last-child { border-bottom: 0; }
+  .summary-label { background: #123b70; color: #fff; padding: 5px; font-size: 13px; font-weight: 800; text-align: right; }
+  .summary-value { padding: 5px; text-align: center; font-weight: 700; font-size: 13px; }
+  .notes { border: 1px solid #7890ad; border-radius: 7px; min-height: 95px; padding: 7px 10px; }
+  .notes-title { font-size: 14px; font-weight: 800; }
+  .notes-body { font-size: 12px; font-weight: 600; margin-top: 6px; }
+  .signature { text-align: center; margin-top: 18px; font-weight: 800; font-size: 13px; }
+  .signature-line { width: 150px; border-bottom: 1px dotted #555; margin: 17px auto 0; }
+  @media print { body { background: white; padding: 0; } .invoice { width: 210mm; min-height: 297mm; border: 1px solid #123b70; margin: 0; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+  @media screen and (max-width: 850px) { body { padding: 0; overflow-x: auto; } .invoice { margin: 10px; } }
 </style>
 </head>
 <body>
-<div class="page">
-  <div class="header">
-    <div class="company-info">
-      <div class="company-name">SIR Solutions Informatiques Rapides</div>
-      <div class="company-sub">الإدارة التجارية — نظام إدارة المبيعات والمشتريات</div>
-      <div class="company-contact">هاتف: 22222222 | البريد: contact@sir.mr</div>
+<div class="invoice">
+  <div class="top-decoration"></div>
+  <header class="header">
+    <div class="header-content">
+      <div class="contact">
+        <div class="contact-row"><span class="icon">☎</span><span>رقم المحل : 22222222</span></div>
+        <div class="contact-row"><span class="icon">●</span><span>الموقع : انواكشوط</span></div>
+      </div>
+      <div class="institution">
+        <div class="institution-small">مؤسسة</div>
+        <div class="institution-name">احمد سالم سيده</div>
+        <div class="institution-line"></div>
+      </div>
+      <div>
+        <div class="invoice-title"><span>فاتورة شراء</span><span>منتجات</span></div>
+        <div class="invoice-info">رقم الفاتورة : <span class="line">${data.invoice_code || "#" + data.id}</span><br>التاريخ : <span class="line">${dateP}</span></div>
+      </div>
     </div>
-    <div class="invoice-badge">
-      <div class="invoice-badge-title">فاتورة شراء</div>
-      <div class="invoice-badge-code">${data.invoice_code || "#" + data.id}</div>
-    </div>
-  </div>
-  <div class="info-box">
-    <div class="info-card"><div class="info-card-label">المورد</div><div class="info-card-value">${data.supplier_name || "—"}</div></div>
-    <div class="info-card"><div class="info-card-label">تاريخ الفاتورة</div><div class="info-card-value">${data.date || "—"}</div></div>
-    <div class="info-card"><div class="info-card-label">عدد الأصناف</div><div class="info-card-value">${printItems.length} صنف</div></div>
-  </div>
-  ${data.notes ? '<div class="notes-box"><span class="notes-label">ملاحظة:</span>' + data.notes + '</div>' : ''}
-  <table class="items-table">
-    <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>سعر الشراء</th><th>سعر البيع</th><th>المجموع الفرعي</th></tr></thead>
+  </header>
+  <section class="supplier">
+    <div class="field">اسم المورد : ${data.supplier_name || ""}</div>
+    <div class="field">رقم الهاتف : ${data.supplier_phone || ""}</div>
+    <div class="field">العنوان : </div>
+    <div class="field">رقم التعريف الضريبي : </div>
+  </section>
+  <table class="products">
+    <thead><tr><th class="number">م</th><th class="product-name">اسم المنتج</th><th class="unit">الوحدة</th><th class="quantity">الكمية</th><th class="unit-price">سعر الوحدة</th><th class="total">الإجمالي</th></tr></thead>
     <tbody>
-      ${printItems.map((it, i) => '<tr><td>' + (i + 1) + '</td><td>' + (it.product_name || "") + '</td><td>' + Number(it.qty || 0).toLocaleString() + '</td><td>' + (it.unit || "") + '</td><td>' + Number(it.purchase_price || 0).toLocaleString() + ' MRU</td><td>' + Number(it.sale_price || 0).toLocaleString() + ' MRU</td><td>' + Number((it.qty || 0) * (it.purchase_price || 0)).toLocaleString() + ' MRU</td></tr>').join('')}
+      ${rows.length ? rows.map((it, i) => '<tr><td>' + (i + 1) + '</td><td class="product-name">' + (it.product_name || "") + '</td><td>' + (it.unit || "") + '</td><td>' + Number(it.qty || 0).toLocaleString() + '</td><td>' + Number(it.purchase_price || 0).toLocaleString() + '</td><td>' + Number((it.qty || 0) * (it.purchase_price || 0)).toLocaleString() + '</td></tr>').join('') : Array.from({length: 9}, (_, i) => '<tr><td>' + (i + 1) + '</td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
     </tbody>
   </table>
-  <div class="totals-section"><div class="totals-box">
-    <div class="totals-row"><span class="totals-label">المجموع الفرعي (شراء)</span><span class="totals-value">${totalHT.toLocaleString()} MRU</span></div>
-    <div class="totals-row"><span class="totals-label">المجموع الفرعي (بيع)</span><span class="totals-value">${totalVente.toLocaleString()} MRU</span></div>
-    <div class="totals-row margin-row"><span class="totals-label">هامش الربح</span><span class="totals-value">${margin.toLocaleString()} MRU</span></div>
-    <div class="totals-row grand"><span class="totals-label">المجموع الكلي</span><span class="totals-value">${totalHT.toLocaleString()} MRU</span></div>
-  </div></div>
-  <div class="stamp-area"><div class="stamp-box">ختم المورد</div><div class="stamp-box">ختم الشركة</div><div class="stamp-box">توقيع المستلم</div></div>
-  <div class="footer">
-    <div class="footer-right"><div class="footer-brand">SIR Solutions Informatiques Rapides</div><div class="footer-sub">SIR.MR — نظام الإدارة التجارية</div></div>
-    <div class="footer-left"><div class="footer-date">${dateStr} — ${timeStr}</div><div class="footer-sub">تمت الطباعة عبر نظام SIR ERP</div></div>
-  </div>
+  <section class="bottom">
+    <div>
+      <div class="notes"><div class="notes-title">ملاحظات :</div><div class="notes-body">${data.notes || ""}</div></div>
+      <div class="signature">توقيع وختم المؤسسة<div class="signature-line"></div></div>
+    </div>
+    <div class="summary">
+      <div class="summary-row"><div class="summary-label">المجموع الفرعي</div><div class="summary-value">${totalHT.toLocaleString()}</div></div>
+      <div class="summary-row"><div class="summary-label">الخصم</div><div class="summary-value">0</div></div>
+      <div class="summary-row"><div class="summary-label">ضريبة أخرى</div><div class="summary-value">0</div></div>
+      <div class="summary-row"><div class="summary-label">الإجمالي الكلي</div><div class="summary-value">${totalHT.toLocaleString()}</div></div>
+    </div>
+  </section>
+  <div class="footer-decoration"></div>
 </div>
 </body></html>`);
       pw.document.close();
@@ -310,7 +336,7 @@ export default function SupplyInvoices() {
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => addSoldProducts(4)} disabled={loadingSold}>{t("supplyInvoices.fourDays") || "4 أيام"}</button>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => addSoldProducts(7)} disabled={loadingSold}>{t("supplyInvoices.week") || "الأسبوع"}</button>
             </div>
-            <ProductPicker options={products} onPick={addManualProduct} />
+            <ProductGrid products={products} categories={categories} selectedCat={selectedCat} setSelectedCat={setSelectedCat} onPick={addManualProduct} />
           </div>
 
           {/* Items */}
