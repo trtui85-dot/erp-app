@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authenticate } from './auth.js';
-import { pool } from './db.js';
+import { pool, migrationPromise } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +37,12 @@ const PORT = process.env.PORT || 4001;
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Wait for migration before serving any request
+app.use(async (req, res, next) => {
+  await migrationPromise;
+  next();
+});
 
 app.use('/api/auth', authRoutes);
 

@@ -491,17 +491,20 @@ async function migrate() {
       `);
     }
 
-    // === ONE-TIME: replace old products with Hassaniya catalog ===
-    const prodCount = await conn.query('SELECT COUNT(*) AS c FROM products');
+    // === ONE-TIME: replace old French products with Hassaniya catalog ===
     const hasOldProducts = await conn.query(`SELECT COUNT(*) AS c FROM products WHERE name ~ '[A-Za-z]'`);
-    if (Number(prodCount.rows[0].c) === 0 || Number(hasOldProducts.rows[0].c) > 0) {
-      console.log('Migration: reseeding Hassaniya products...');
-      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
-      await conn.query('DELETE FROM batches');
-      await conn.query('DELETE FROM sale_invoices');
-      await conn.query('DELETE FROM supply_invoices');
-      await conn.query('DELETE FROM products');
+    if (Number(hasOldProducts.rows[0].c) > 0) {
+      console.log('Migration: removing old French products...');
+      // Only delete product-dependent data, keep invoices intact
+      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\'))');
+      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\'))');
+      await conn.query('DELETE FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\')');
+      await conn.query('DELETE FROM products WHERE name ~ \'[A-Za-z]\'');
+    }
+
+    const prodCount = await conn.query('SELECT COUNT(*) AS c FROM products');
+    if (Number(prodCount.rows[0].c) === 0) {
+      console.log('Migration: seeding Hassaniya products...');
 
       const cats = await conn.query('SELECT id, name_ar FROM categories');
       const catMap = {};
@@ -652,6 +655,8 @@ async function migrate() {
   }
 }
 
-migrate();
+let migrationDone = false;
+const migrationPromise = migrate().then(() => { migrationDone = true; }).catch(() => { migrationDone = true; });
 
+export { migrationPromise, migrationDone };
 export default pool;
