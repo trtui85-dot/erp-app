@@ -66,12 +66,22 @@ export default function POS() {
     const map = {};
     batches.forEach((b) => {
       if (b.status === "active" && Number(b.remaining_qty) > 0) {
-        const pid = b.product_id;
-        if (!map[pid]) {
-          const prod = products.find((x) => x.id === pid);
-          map[pid] = { ...b, total_stock: 0, product_id: pid, product_name: b.product_name, category_id: b.category_id, current_sale_price: prod?.current_sale_price || b.sale_price };
+        const key = b.product_unit_id ? `u_${b.product_unit_id}` : `p_${b.product_id}`;
+        if (!map[key]) {
+          const prod = products.find((x) => x.id === b.product_id);
+          const unitObj = (prod && prod.units && prod.units.find((u) => u.id === b.product_unit_id)) || null;
+          map[key] = {
+            ...b,
+            total_stock: 0,
+            product_id: b.product_id,
+            product_unit_id: b.product_unit_id || null,
+            unit: unitObj ? unitObj.unit : b.unit,
+            product_name: b.product_name,
+            category_id: b.category_id,
+            current_sale_price: (unitObj && Number(unitObj.current_sale_price) > 0) ? Number(unitObj.current_sale_price) : (prod?.current_sale_price || b.sale_price),
+          };
         }
-        map[pid].total_stock += Number(b.remaining_qty);
+        map[key].total_stock += Number(b.remaining_qty);
       }
     });
     return Object.values(map).filter((p) => {
@@ -82,14 +92,18 @@ export default function POS() {
   }, [batches, products, search, selectedCategory]);
 
   const addToCart = (product) => {
-    const existing = cart.find((c) => c.product_id === product.product_id);
+    const exKey = product.product_unit_id ? `u_${product.product_unit_id}` : `p_${product.product_id}`;
+    const existing = cart.find((c) => c.cart_key === exKey);
     if (existing) {
-      setCart(cart.map((c) => c.product_id === product.product_id ? { ...c, qty: c.qty + 1 } : c));
+      setCart(cart.map((c) => c.cart_key === exKey ? { ...c, qty: c.qty + 1 } : c));
     } else {
-      const batch = batches.find((b) => b.product_id === product.product_id && b.status === "active" && Number(b.remaining_qty) > 0);
+      const batch = batches.find((b) => b.status === "active" && Number(b.remaining_qty) > 0 && (b.product_unit_id ? b.product_unit_id === product.product_unit_id : b.product_id === product.product_id));
       setCart([...cart, {
+        cart_key: exKey,
         product_id: product.product_id,
-        product_name: product.product_name,
+        product_unit_id: product.product_unit_id || null,
+        product_name: product.unit ? `${product.product_name} (${product.unit})` : product.product_name,
+        unit: product.unit,
         batch_id: batch?.id,
         qty: 1,
         price: Number(product.current_sale_price || batch?.sale_price || 0),
@@ -98,9 +112,9 @@ export default function POS() {
     }
   };
 
-  const updateQty = (pid, delta) => {
+  const updateQty = (key, delta) => {
     setCart(cart.map((c) => {
-      if (c.product_id !== pid) return c;
+      if (c.cart_key !== key) return c;
       const newQty = c.qty + delta;
       if (newQty <= 0) return null;
       if (newQty > c.max_qty) { toast.error(t("pos.insufficientStock")); return c; }
@@ -108,7 +122,7 @@ export default function POS() {
     }).filter(Boolean));
   };
 
-  const removeFromCart = (pid) => setCart(cart.filter((c) => c.product_id !== pid));
+  const removeFromCart = (key) => setCart(cart.filter((c) => c.cart_key !== key));
 
   const total = cart.reduce((s, c) => s + c.qty * c.price, 0);
 
@@ -276,10 +290,10 @@ export default function POS() {
             </thead>
             <tbody>
               {availableProducts.map((p) => (
-                <tr key={p.product_id} className="pos-product-row" onClick={() => addToCart(p)}>
-                  <td className="pos-product-name">{p.product_name}</td>
+                <tr key={p.product_unit_id ? `u_${p.product_unit_id}` : `p_${p.product_id}`} className="pos-product-row" onClick={() => addToCart(p)}>
+                  <td className="pos-product-name">{p.product_name}{p.unit ? <span className="pos-product-unit"> ({p.unit})</span> : null}</td>
                   <td className="pos-product-price">{Number(p.current_sale_price || p.sale_price || 0).toLocaleString()}</td>
-                  <td className="pos-product-stock">{Number(p.total_stock).toLocaleString()}</td>
+                  <td className="pos-product-stock">{Number(p.total_stock).toLocaleString()} {p.unit ? p.unit : ""}</td>
                 </tr>
               ))}
               {availableProducts.length === 0 && <tr><td colSpan={3} className="pos-empty">{t("pos.noProducts")}</td></tr>}
@@ -306,16 +320,16 @@ export default function POS() {
           {cart.length === 0 ? (
             <div className="pos-empty-cart">{t("pos.cartEmpty")}</div>
           ) : cart.map((item) => (
-            <div key={item.product_id} className="pos-cart-item">
+            <div key={item.cart_key} className="pos-cart-item">
               <div className="pos-item-info">
                 <div className="pos-item-name">{item.product_name}</div>
                 <div className="pos-item-price">{Number(item.price).toLocaleString()} × {item.qty}</div>
               </div>
               <div className="pos-item-controls">
-                <button className="pos-qty-btn" onClick={() => updateQty(item.product_id, -1)}><Minus size={14} /></button>
+                <button className="pos-qty-btn" onClick={() => updateQty(item.cart_key, -1)}><Minus size={14} /></button>
                 <span className="pos-item-qty">{item.qty}</span>
-                <button className="pos-qty-btn" onClick={() => updateQty(item.product_id, 1)}><Plus size={14} /></button>
-                <button className="pos-item-remove" onClick={() => removeFromCart(item.product_id)}><X size={14} /></button>
+                <button className="pos-qty-btn" onClick={() => updateQty(item.cart_key, 1)}><Plus size={14} /></button>
+                <button className="pos-item-remove" onClick={() => removeFromCart(item.cart_key)}><X size={14} /></button>
               </div>
             </div>
           ))}

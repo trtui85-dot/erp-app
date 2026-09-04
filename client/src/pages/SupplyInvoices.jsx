@@ -32,12 +32,21 @@ function ProductGrid({ products, categories, selectedCat, setSelectedCat, onPick
         ))}
       </div>
       <div className="pos-grid">
-        {filtered.map((p) => (
-          <button key={p.id} type="button" className="pos-grid-item" onClick={() => onPick(p)}>
-            <span className="pos-grid-name">{p.name}</span>
-            <span className="pos-grid-unit">{p.unit}</span>
-          </button>
-        ))}
+        {filtered.map((p) => {
+          const units = (p.units && p.units.length && p.units.filter((u) => u.active !== 0)) ? p.units.filter((u) => u.active !== 0) : [{ unit: p.unit || "كيس" }];
+          return (
+            <button key={p.id} type="button" className="pos-grid-item">
+              <span className="pos-grid-name">{p.name}</span>
+              <span className="pos-grid-units">
+                {units.map((u) => (
+                  <span key={(u.id || u.unit)} className="pos-grid-unit-chip" onClick={(e) => { e.stopPropagation(); onPick(p, u); }}>
+                    {u.unit}
+                  </span>
+                ))}
+              </span>
+            </button>
+          );
+        })}
         {filtered.length === 0 && <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--gray-400)", padding: 20 }}>{t("supplyInvoices.searchProduct") || "لا توجد منتجات"}</div>}
       </div>
     </div>
@@ -119,9 +128,20 @@ export default function SupplyInvoices() {
     } catch (err) { toast.error(err.message || "Erreur"); setLoadingSold(false); }
   };
 
-  const addManualProduct = (prod) => {
-    if (items.some((i) => i.product_id === prod.id)) { toast.error(t("supplyInvoices.alreadyAdded") || "المنتج موجود بالفعل"); return; }
-    setItems((prev) => [...prev, { product_id: prod.id, name: prod.name, unit: prod.unit || "kg", qty: 1, sale_price: prod.current_sale_price || "", purchase_price: "", expiry_date: "" }]);
+  const addManualProduct = (prod, unitObj) => {
+    const unit = unitObj ? (unitObj.unit || prod.unit || "كيس") : (prod.unit || "كيس");
+    const unitId = unitObj && unitObj.id ? unitObj.id : null;
+    if (items.some((i) => i.product_id === prod.id && (i.product_unit_id || null) === unitId)) { toast.error(t("supplyInvoices.alreadyAdded") || "المنتج موجود بالفعل"); return; }
+    setItems((prev) => [...prev, {
+      product_id: prod.id,
+      product_unit_id: unitId,
+      name: prod.name,
+      unit,
+      qty: 1,
+      sale_price: (unitObj && unitObj.current_sale_price) ? unitObj.current_sale_price : (prod.current_sale_price || ""),
+      purchase_price: (unitObj && unitObj.purchase_price) ? unitObj.purchase_price : "",
+      expiry_date: "",
+    }]);
   };
 
   const updateItem = (idx, field, value) => {
@@ -158,8 +178,9 @@ export default function SupplyInvoices() {
 
       const normalized = effectiveItems.map((it) => ({
         product_id: Number(it.product_id),
+        product_unit_id: it.product_unit_id ? Number(it.product_unit_id) : null,
         qty: Number(it.qty) || 1,
-        unit: it.unit || "kg",
+        unit: it.unit || "كيس",
         purchase_price: Number(it.purchase_price) || 0,
         sale_price: Number(it.sale_price) || Number(it.purchase_price) || 0,
         expiry_date: it.expiry_date || null,

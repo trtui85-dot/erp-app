@@ -31,10 +31,12 @@ router.get('/:id', requireModule('supplyInvoices'), async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
     const [items] = await query(`
-      SELECT sii.*, p.name as product_name, b.remaining_qty as batch_remaining_qty, b.batch_code
+      SELECT sii.*, p.name as product_name, b.remaining_qty as batch_remaining_qty, b.batch_code,
+        pu.unit as product_unit_name
       FROM supply_invoice_items sii
       JOIN products p ON sii.product_id = p.id
       LEFT JOIN batches b ON sii.batch_id = b.id
+      LEFT JOIN product_units pu ON sii.product_unit_id = pu.id
       WHERE sii.invoice_id = ?
     `, [req.params.id]);
     return res.json({ ...invoices[0], items });
@@ -73,14 +75,15 @@ router.post('/', requireModule('supplyInvoices'), async (req, res) => {
 
     const createdItems = [];
     for (const item of items) {
+      const unit = item.unit || 'كيس';
       const [itemResult] = await conn.execute(
-        'INSERT INTO supply_invoice_items (invoice_id, product_id, qty, unit, purchase_price, sale_price, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [invoiceId, item.product_id, item.qty, item.unit || 'kg', item.purchase_price, item.sale_price || item.purchase_price, item.expiry_date || null]
+        'INSERT INTO supply_invoice_items (invoice_id, product_id, product_unit_id, qty, unit, purchase_price, sale_price, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [invoiceId, item.product_id, item.product_unit_id || null, item.qty, unit, item.purchase_price, item.sale_price || item.purchase_price, item.expiry_date || null]
       );
 
       const [batchResult] = await conn.execute(
-        'INSERT INTO batches (product_id, supplier_id, arrival_date, initial_qty, remaining_qty, unit, purchase_price, sale_price, expiry_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item.product_id, supplier_id, invoiceDate, item.qty, item.qty, item.unit || 'kg', item.purchase_price, item.sale_price || item.purchase_price, item.expiry_date || null, null]
+        'INSERT INTO batches (product_id, product_unit_id, supplier_id, arrival_date, initial_qty, remaining_qty, unit, purchase_price, sale_price, expiry_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item.product_id, item.product_unit_id || null, supplier_id, invoiceDate, item.qty, item.qty, unit, item.purchase_price, item.sale_price || item.purchase_price, item.expiry_date || null, null]
       );
 
       const batchCode = `B-${invoiceDate}-${String(batchResult.insertId).padStart(3, '0')}`;

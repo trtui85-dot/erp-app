@@ -16,7 +16,19 @@ router.get('/', requireModule('products'), async (req, res) => {
       WHERE p.active = 1
       ORDER BY p.name
     `);
-    return res.json(products);
+
+    const [units] = await query(`SELECT pu.*, c.name_ar AS category_name_ar FROM product_units pu
+      JOIN products p ON p.id = pu.product_id
+      LEFT JOIN categories c ON c.id = p.category_id
+      WHERE pu.active = 1 ORDER BY pu.id`);
+
+    const unitsByProduct = {};
+    for (const u of units) {
+      if (!unitsByProduct[u.product_id]) unitsByProduct[u.product_id] = [];
+      unitsByProduct[u.product_id].push(u);
+    }
+    const result = products.map((p) => ({ ...p, units: unitsByProduct[p.id] || [] }));
+    return res.json(result);
   } catch (err) {
     console.error('List products error:', err);
     return res.status(500).json({ error: err.message || 'Server error' });
@@ -80,18 +92,90 @@ router.get('/:id', requireModule('products'), async (req, res) => {
 
 router.post('/', requireModule('products'), async (req, res) => {
   try {
-    const { name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id } = req.body;
+    const { name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id, units } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
     const [result] = await query(
       'INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, unit || 'kg', price_type || 'fixed', current_sale_price || 0, min_stock || 20, shelf_life_days || 5, category_id || null]
+      [name, unit || 'كيس', price_type || 'fixed', current_sale_price || 0, min_stock || 20, shelf_life_days || 5, category_id || null]
     );
-    const [product] = await query('SELECT * FROM products WHERE id = ?', [result.insertId]);
+    const newId = result.insertId;
+    const unitsArr = (units && units.length) ? units : [{ unit: unit || 'كيس', current_sale_price: current_sale_price || 0, purchase_price: current_sale_price || 0, min_stock: min_stock || 0 }];
+    for (const u of unitsArr) {
+      await query(
+        'INSERT INTO product_units (product_id, unit, price_type, current_sale_price, purchase_price, min_stock) VALUES (?, ?, ?, ?, ?, ?)',
+        [newId, u.unit || 'كيس', u.price_type || 'fixed', u.current_sale_price || 0, u.purchase_price || 0, u.min_stock || 0]
+      );
+    }
+    const [product] = await query('SELECT * FROM products WHERE id = ?', [newId]);
     return res.status(201).json(product[0]);
   } catch (err) {
     console.error('Create product error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+// === Product units (multi-unit) CRUD ===
+router.get('/:id/units', requireModule('products'), async (req, res) => {
+  try {
+    const [units] = await query('SELECT * FROM product_units WHERE product_id = ? ORDER BY active DESC, id', [req.params.id]);
+    return res.json(units);
+  } catch (err) {
+    console.error('List units error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+router.post('/:id/units', requireModule('products'), async (req, res) => {
+  try {
+    const { unit, current_sale_price, purchase_price, min_stock, price_type } = req.body;
+    if (!unit) return res.status(400).json({ error: 'Unit is required' });
+    const [result] = await query(
+      'INSERT INTO product_units (product_id, unit, price_type, current_sale_price, purchase_price, min_stock) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.params.id, unit, price_type || 'fixed', current_sale_price || 0, purchase_price || 0, min_stock || 0]
+    );
+    const [unitRow] = await query('SELECT * FROM product_units WHERE id = ?', [result.insertId]);
+    return res.status(201).json(unitRow[0]);
+  } catch (err) {
+    console.error('Create unit error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+router.patch('/units/:unitId', requireModule('products'), async (req, res) => {
+  try {
+    const { unit, current_sale_price, purchase_price, min_stock, price_type, active } = req.body;
+    const [existing] = await query('SELECT * FROM product_units WHERE id = ?', [req.params.unitId]);
+    if (existing.length === 0) return res.status(404).json({ error: 'Unit not found' });
+    await query(
+      'UPDATE product_units SET unit = ?, price_type = ?, current_sale_price = ?, purchase_price = ?, min_stock = ?, active = ? WHERE id = ?',
+      [
+        unit || existing[0].unit,
+        price_type !== undefined ? price_type : existing[0].price_type,
+        current_sale_price !== undefined ? current_sale_price : existing[0].current_sale_price,
+        purchase_price !== undefined ? purchase_price : existing[0].purchase_price,
+        min_stock !== undefined ? min_stock : existing[0].min_stock,
+        active !== undefined ? active : existing[0].active,
+        req.params.unitId
+      ]
+    );
+    const [unitRow] = await query('SELECT * FROM product_units WHERE id = ?', [req.params.unitId]);
+    return res.json(unitRow[0]);
+  } catch (err) {
+    console.error('Update unit error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+router.delete('/units/:unitId', requireModule('products'), async (req, res) => {
+  try {
+    const [existing] = await query('SELECT * FROM product_units WHERE id = ?', [req.params.unitId]);
+    if (existing.length === 0) return res.status(404).json({ error: 'Unit not found' });
+    await query('UPDATE product_units SET active = 0 WHERE id = ?', [req.params.unitId]);
+    return res.json({ message: 'Unit deactivated' });
+  } catch (err) {
+    console.error('Delete unit error:', err);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
 });

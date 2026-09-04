@@ -97,12 +97,16 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
       const itemTotal = (item.qty || 0) * (item.price || 0);
       const isFree = !item.batch_id;
       let productId = item.product_id || null;
+      let productUnitId = item.product_unit_id || null;
       if (isFree && item.product_name) {
         productId = null;
+      } else if (!productUnitId && item.batch_id) {
+        const [bRow] = await conn.execute('SELECT product_unit_id FROM batches WHERE id = ?', [item.batch_id]);
+        if (bRow.length > 0) productUnitId = bRow[0].product_unit_id || null;
       }
       await conn.execute(
-        'INSERT INTO sale_invoice_items (invoice_id, batch_id, product_id, product_name, qty, price, total) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [invoiceId, item.batch_id || null, productId, item.product_name || null, item.qty, item.price, itemTotal]
+        'INSERT INTO sale_invoice_items (invoice_id, batch_id, product_id, product_unit_id, product_name, qty, price, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [invoiceId, item.batch_id || null, productId, productUnitId, item.product_name || null, item.qty, item.price, itemTotal]
       );
       if (!isFree) {
         await conn.execute(

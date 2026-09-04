@@ -445,6 +445,63 @@ async function migrate() {
       created_at TIMESTAMP DEFAULT NOW()
     )`);
 
+    // === Product units (multi-unit per product) ===
+    await conn.query(`CREATE TABLE IF NOT EXISTS product_units (
+      id SERIAL PRIMARY KEY,
+      product_id INT NOT NULL,
+      unit VARCHAR(30) NOT NULL,
+      price_type VARCHAR(20) DEFAULT 'fixed',
+      current_sale_price DECIMAL(12,2) DEFAULT 0,
+      purchase_price DECIMAL(12,2) DEFAULT 0,
+      min_stock DECIMAL(12,2) DEFAULT 0,
+      sale_weight DECIMAL(12,6) NULL,
+      active SMALLINT DEFAULT 1,
+      created_at TIMESTAMP DEFAULT NOW(),
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    )`);
+
+    await conn.query(`ALTER TABLE batches ADD COLUMN IF NOT EXISTS product_unit_id INT NULL`);
+    await conn.query(`ALTER TABLE supply_invoice_items ADD COLUMN IF NOT EXISTS product_unit_id INT NULL`);
+    await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_unit_id INT NULL`);
+
+    // Safety: also add the column to the legacy erp_app schema tables if they exist,
+    // so runtime queries with search_path 'erp_app, public' never hit a missing column.
+    await conn.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema='erp_app' AND table_name='batches') THEN
+          EXECUTE 'ALTER TABLE erp_app.batches ADD COLUMN IF NOT EXISTS product_unit_id INT NULL';
+        END IF;
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema='erp_app' AND table_name='supply_invoice_items') THEN
+          EXECUTE 'ALTER TABLE erp_app.supply_invoice_items ADD COLUMN IF NOT EXISTS product_unit_id INT NULL';
+        END IF;
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema='erp_app' AND table_name='sale_invoice_items') THEN
+          EXECUTE 'ALTER TABLE erp_app.sale_invoice_items ADD COLUMN IF NOT EXISTS product_unit_id INT NULL';
+        END IF;
+      END $$`);
+
+    // Seed a default product_unit for every product from its current products.unit
+    const puSeed = await conn.query(`SELECT COUNT(*) AS c FROM product_units`);
+    if (Number(puSeed.rows[0].c) === 0) {
+      await conn.query(`
+        INSERT INTO product_units (product_id, unit, price_type, current_sale_price, purchase_price, min_stock)
+        SELECT id, COALESCE(NULLIF(unit,''), 'كيس'), price_type, current_sale_price, current_sale_price, min_stock
+        FROM products`);
+      console.log('Migration: default product_units seeded');
+    }
+
+    // Backfill product_unit_id on existing batches / supply items that are NULL
+    await conn.query(`
+      UPDATE batches b SET product_unit_id = (
+        SELECT pu.id FROM product_units pu WHERE pu.product_id = b.product_id
+        ORDER BY pu.id LIMIT 1
+      ) WHERE b.product_unit_id IS NULL`);
+    await conn.query(`
+      UPDATE supply_invoice_items sii SET product_unit_id = (
+        SELECT pu.id FROM product_units pu WHERE pu.product_id = sii.product_id
+        ORDER BY pu.id LIMIT 1
+      ) WHERE sii.product_unit_id IS NULL`);
+
     await conn.query(`ALTER TABLE sale_invoices ALTER COLUMN customer_id DROP NOT NULL`);
 
     await conn.query(`ALTER TABLE sale_invoice_items ALTER COLUMN batch_id DROP NOT NULL`);
@@ -597,6 +654,11 @@ async function migrate() {
     const batchCheck = await conn.query('SELECT COUNT(*) AS c FROM batches');
     if (Number(batchCheck.rows[0].c) === 0) {
       const products = await conn.query('SELECT id, name, unit, current_sale_price, shelf_life_days FROM products ORDER BY id');
+      const productUnits = await conn.query('SELECT id, product_id, current_sale_price FROM product_units ORDER BY id');
+      const puByProduct = {};
+      for (const u of productUnits.rows) {
+        if (!puByProduct[u.product_id]) puByProduct[u.product_id] = u;
+      }
       const suppliers = await conn.query('SELECT id FROM suppliers ORDER BY id');
 
       const purchasePrices = {
@@ -618,7 +680,8 @@ async function migrate() {
         const suppIdx = i % suppliers.rows.length;
         const qty = 150 + Math.floor(Math.random() * 200);
         const purPrice = purchasePrices[p.name] || 100;
-        const salePrice = p.current_sale_price || purPrice * 1.5;
+        const salePrice = (puByProduct[p.id] && puByProduct[p.id].current_sale_price) || p.current_sale_price || purPrice * 1.5;
+        const puId = puByProduct[p.id] ? puByProduct[p.id].id : null;
         const supplierId = suppliers.rows[suppIdx].id;
 
         const invResult = await conn.query(
@@ -631,20 +694,20 @@ async function migrate() {
         expiryDate.setDate(expiryDate.getDate() + (p.shelf_life_days || 7));
 
         const batchResult = await conn.query(
-          `INSERT INTO batches (batch_code, product_id, supplier_id, arrival_date, initial_qty, remaining_qty, unit, purchase_price, sale_price, expiry_date, status)
-           VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, 'active') RETURNING id`,
+          `INSERT INTO batches (batch_code, product_id, product_unit_id, supplier_id, arrival_date, initial_qty, remaining_qty, unit, purchase_price, sale_price, expiry_date, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, 'active') RETURNING id`,
           [
             'B-' + today + '-' + String(i + 1).padStart(3, '0'),
-            p.id, supplierId, today, qty, p.unit || 'kg',
+            p.id, puId, supplierId, today, qty, p.unit || 'كيس',
             purPrice, salePrice, expiryDate.toISOString().split('T')[0]
           ]
         );
         const batchId = batchResult.rows[0].id;
 
         await conn.query(
-          `INSERT INTO supply_invoice_items (invoice_id, product_id, qty, unit, purchase_price, sale_price, expiry_date, batch_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [invId, p.id, qty, p.unit || 'kg', purPrice, salePrice, expiryDate.toISOString().split('T')[0], batchId]
+          `INSERT INTO supply_invoice_items (invoice_id, product_id, product_unit_id, qty, unit, purchase_price, sale_price, expiry_date, batch_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [invId, p.id, puId, qty, p.unit || 'كيس', purPrice, salePrice, expiryDate.toISOString().split('T')[0], batchId]
         );
       }
 
