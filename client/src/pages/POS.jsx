@@ -248,7 +248,7 @@ export default function POS() {
         <div className="pos-toolbar">
           <div className={`pos-search${searchFocused ? " focused" : ""}`}>
             <Search size={16} className="search-icon" onClick={() => setSearchFocused(true)} />
-            <input className="search-input" placeholder={t("pos.searchProducts")} value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={(e) => { if (!e.target.value) setSearchFocused(false); }} />
+            <input className="search-input" placeholder={t("pos.searchProducts")} value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setSearchFocused(true)} />
             {search && <X size={14} className="search-clear" onClick={() => { setSearch(""); setSearchFocused(false); }} />}
           </div>
           <button className="pos-other-btn" onClick={() => navigate("/otherSales")}>

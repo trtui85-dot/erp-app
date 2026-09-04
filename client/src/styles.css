@@ -1318,11 +1318,11 @@ table { border-collapse: collapse; width: 100%; }
 .pos-search.focused .search-icon { transform: rotate(360deg) scale(1.15); color: var(--primary); }
 .pos-search .search-input {
   border: none; background: transparent; font-size: 13px;
-  outline: none; min-height: 36px; flex: 1; padding: 0;
-  width: 0; transition: all 0.35s cubic-bezier(.4,0,.2,1);
+  outline: none; min-height: 36px; flex: 1; padding: 0 4px;
+  transition: border-color 0.2s;
 }
-.pos-search.focused .search-input { width: 100%; padding: 0 4px; }
-.pos-search:not(.focused) .search-input { width: 0; min-width: 0; opacity: 0; }
+.pos-search.focused .search-input { }
+.pos-search:not(.focused) .search-input { }
 .pos-search .search-clear {
   color: var(--gray-400); cursor: pointer; flex-shrink: 0; opacity: 0;
   transition: opacity 0.2s, transform 0.2s; transform: scale(0.5);
