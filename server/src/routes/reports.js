@@ -43,7 +43,7 @@ router.get('/inventory', async (req, res) => {
       SELECT
         p.id as product_id,
         p.name as product_name,
-        p.unit,
+        COALESCE(b.unit, pu.unit, p.unit) as unit,
         p.min_stock,
         p.shelf_life_days,
         COALESCE(SUM(b.initial_qty), 0) as total_purchased,
@@ -57,15 +57,16 @@ router.get('/inventory', async (req, res) => {
           ELSE 0
         END as waste_pct,
         CASE
+          WHEN COALESCE(SUM(b.remaining_qty), 0) <= 0 THEN 'empty'
           WHEN COALESCE(SUM(b.remaining_qty), 0) <= p.min_stock THEN 'low'
-          WHEN COALESCE(SUM(b.remaining_qty), 0) = 0 THEN 'empty'
           ELSE 'ok'
         END as stock_status
       FROM products p
       LEFT JOIN batches b ON b.product_id = p.id
+      LEFT JOIN product_units pu ON pu.id = b.product_unit_id
       WHERE p.active = 1
-      GROUP BY p.id, p.name, p.unit, p.min_stock, p.shelf_life_days
-      ORDER BY p.name
+      GROUP BY p.id, p.name, COALESCE(b.unit, pu.unit, p.unit), p.min_stock, p.shelf_life_days
+      ORDER BY p.name, COALESCE(b.unit, pu.unit, p.unit)
     `);
     return res.json(inventory);
   } catch (err) {
@@ -86,6 +87,7 @@ router.get('/batches-health', async (req, res) => {
         b.sold_qty,
         b.wasted_qty,
         b.purchase_price,
+        b.unit,
         b.status,
         p.name as product_name,
         p.shelf_life_days,
@@ -116,14 +118,15 @@ router.get('/low-stock', async (req, res) => {
       SELECT
         p.id,
         p.name,
-        p.unit,
-        p.min_stock,
+        COALESCE(b.unit, pu.unit, p.unit) as unit,
+        COALESCE(pu.current_sale_price, 0) as unit_price,
         COALESCE(SUM(b.remaining_qty), 0) as total_remaining
       FROM products p
       LEFT JOIN batches b ON b.product_id = p.id AND b.status = 'active'
+      LEFT JOIN product_units pu ON pu.id = b.product_unit_id
       WHERE p.active = 1
-      GROUP BY p.id, p.name, p.unit, p.min_stock
-      HAVING total_remaining <= p.min_stock
+      GROUP BY p.id, p.name, COALESCE(b.unit, pu.unit, p.unit), COALESCE(pu.current_sale_price, 0)
+      HAVING COALESCE(SUM(b.remaining_qty), 0) <= p.min_stock
       ORDER BY total_remaining ASC
     `);
     return res.json(products);

@@ -502,6 +502,12 @@ async function migrate() {
         ORDER BY pu.id LIMIT 1
       ) WHERE sii.product_unit_id IS NULL`);
 
+    // Sync batches.unit to its product_unit unit (keeps reports consistent with Hassaniya units)
+    await conn.query(`
+      UPDATE batches b SET unit = pu.unit
+      FROM product_units pu WHERE pu.id = b.product_unit_id
+      AND b.unit IS DISTINCT FROM pu.unit`);
+
     await conn.query(`ALTER TABLE sale_invoices ALTER COLUMN customer_id DROP NOT NULL`);
 
     await conn.query(`ALTER TABLE sale_invoice_items ALTER COLUMN batch_id DROP NOT NULL`);
