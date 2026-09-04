@@ -6,8 +6,8 @@ const router = Router();
 router.get('/profit', async (req, res) => {
   try {
     const { from_date, to_date } = req.query;
-    let dateFilter = '';
     const params = [];
+    let dateFilter = '';
     if (from_date) { dateFilter += ' AND si.date >= ?'; params.push(from_date); }
     if (to_date) { dateFilter += ' AND si.date <= ?'; params.push(to_date); }
 
@@ -25,11 +25,11 @@ router.get('/profit', async (req, res) => {
       FROM products p
       LEFT JOIN batches b ON b.product_id = p.id
       LEFT JOIN sale_invoice_items sii ON sii.batch_id = b.id
-      LEFT JOIN sale_invoices si ON si.id = sii.invoice_id ${dateFilter.replace(/AND /g, 'AND si.').replace('AND si.si.', 'AND si.')}
+      LEFT JOIN sale_invoices si ON si.id = sii.invoice_id ${dateFilter}
       WHERE p.active = 1
       GROUP BY p.id, p.name, p.unit
       ORDER BY net_profit DESC
-    `);
+    `, params);
     return res.json(profit);
   } catch (err) {
     console.error('Profit report error:', err);

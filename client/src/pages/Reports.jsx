@@ -81,8 +81,10 @@ export default function Reports() {
   const [inventoryData, setInventoryData] = useState([]);
   const [healthData, setHealthData] = useState([]);
   const [lowStock, setLowStock] = useState([]);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
 
   const loadAll = async () => {
     setLoading(true);
