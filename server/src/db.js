@@ -491,15 +491,15 @@ async function migrate() {
       `);
     }
 
-    // === ONE-TIME: replace old French products with Hassaniya catalog ===
+    // === Replace old French products with Hassaniya catalog ===
     const hasOldProducts = await conn.query(`SELECT COUNT(*) AS c FROM products WHERE name ~ '[A-Za-z]'`);
     if (Number(hasOldProducts.rows[0].c) > 0) {
       console.log('Migration: removing old French products...');
-      // Only delete product-dependent data, keep invoices intact
-      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\'))');
-      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\'))');
-      await conn.query('DELETE FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ \'[A-Za-z]\')');
-      await conn.query('DELETE FROM products WHERE name ~ \'[A-Za-z]\'');
+      await conn.query(`DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ '[A-Za-z]'))`);
+      await conn.query(`DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ '[A-Za-z]'))`);
+      await conn.query(`DELETE FROM batches WHERE product_id IN (SELECT id FROM products WHERE name ~ '[A-Za-z]')`);
+      await conn.query(`DELETE FROM products WHERE name ~ '[A-Za-z]'`);
+      console.log('Migration: old French products removed');
     }
 
     const prodCount = await conn.query('SELECT COUNT(*) AS c FROM products');
