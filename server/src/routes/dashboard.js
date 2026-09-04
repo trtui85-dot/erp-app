@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireStats } from '../auth.js';
 
 const router = Router();
+router.use(requireStats);
 
 router.get('/stats', async (req, res) => {
   try {

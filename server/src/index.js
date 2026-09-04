@@ -30,6 +30,8 @@ import employeePaymentRoutes from './routes/employeePayments.js';
 import employeeAdvanceRoutes from './routes/employeeAdvances.js';
 import employeeReportRoutes from './routes/employeeReport.js';
 import categoryRoutes from './routes/categories.js';
+import userRoutes from './routes/users.js';
+import { activityLogger } from './logger.js';
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -46,28 +48,30 @@ app.use(async (req, res, next) => {
 
 app.use('/api/auth', authRoutes);
 
+app.use('/api/users', authenticate, userRoutes);
+
 app.use('/api/dashboard', authenticate, dashboardRoutes);
-app.use('/api/products', authenticate, productRoutes);
-app.use('/api/batches', authenticate, batchRoutes);
-app.use('/api/dailyprices', authenticate, dailyPriceRoutes);
-app.use('/api/suppliers', authenticate, supplierRoutes);
-app.use('/api/supplyinvoices', authenticate, supplyInvoiceRoutes);
-app.use('/api/customers', authenticate, customerRoutes);
-app.use('/api/saleinvoices', authenticate, saleInvoiceRoutes);
-app.use('/api/debts', authenticate, debtRoutes);
-app.use('/api/distributions', authenticate, distributionRoutes);
+app.use('/api/products', authenticate, activityLogger, productRoutes);
+app.use('/api/batches', authenticate, activityLogger, batchRoutes);
+app.use('/api/dailyprices', authenticate, activityLogger, dailyPriceRoutes);
+app.use('/api/suppliers', authenticate, activityLogger, supplierRoutes);
+app.use('/api/supplyinvoices', authenticate, activityLogger, supplyInvoiceRoutes);
+app.use('/api/customers', authenticate, activityLogger, customerRoutes);
+app.use('/api/saleinvoices', authenticate, activityLogger, saleInvoiceRoutes);
+app.use('/api/debts', authenticate, activityLogger, debtRoutes);
+app.use('/api/distributions', authenticate, activityLogger, distributionRoutes);
 app.use('/api/settings', authenticate, settingsRoutes);
-app.use('/api/expenses', authenticate, expenseRoutes);
-app.use('/api/waste', authenticate, wasteRoutes);
+app.use('/api/expenses', authenticate, activityLogger, expenseRoutes);
+app.use('/api/waste', authenticate, activityLogger, wasteRoutes);
 app.use('/api/reports', authenticate, reportRoutes);
-app.use('/api/paymentmethods', authenticate, paymentMethodRoutes);
-app.use('/api/dailyjournal', authenticate, dailyJournalRoutes);
-app.use('/api/employees', authenticate, employeeRoutes);
-app.use('/api/employee-attendance', authenticate, employeeAttendanceRoutes);
-app.use('/api/employee-payments', authenticate, employeePaymentRoutes);
-app.use('/api/employee-advances', authenticate, employeeAdvanceRoutes);
-app.use('/api/employee-report', authenticate, employeeReportRoutes);
-app.use('/api/categories', authenticate, categoryRoutes);
+app.use('/api/paymentmethods', authenticate, activityLogger, paymentMethodRoutes);
+app.use('/api/dailyjournal', authenticate, activityLogger, dailyJournalRoutes);
+app.use('/api/employees', authenticate, activityLogger, employeeRoutes);
+app.use('/api/employee-attendance', authenticate, activityLogger, employeeAttendanceRoutes);
+app.use('/api/employee-payments', authenticate, activityLogger, employeePaymentRoutes);
+app.use('/api/employee-advances', authenticate, activityLogger, employeeAdvanceRoutes);
+app.use('/api/employee-report', authenticate, activityLogger, employeeReportRoutes);
+app.use('/api/categories', authenticate, activityLogger, categoryRoutes);
 
 if (!process.env.VERCEL) {
   const clientDist = path.resolve(__dirname, '../../client/dist');

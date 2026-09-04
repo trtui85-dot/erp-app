@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { requireModule } from '../auth.js';
+import { requireModule, requireAny } from '../auth.js';
 
 const router = Router();
 
-router.get('/', requireModule('products'), async (req, res) => {
+router.get('/', requireAny('products', 'pos', 'dailyPrices', 'supplyInvoices', 'otherSales'), async (req, res) => {
   try {
     const [products] = await query(`
       SELECT p.*, 
@@ -35,7 +35,7 @@ router.get('/', requireModule('products'), async (req, res) => {
   }
 });
 
-router.get('/sold', requireModule('products'), async (req, res) => {
+router.get('/sold', requireAny('products','pos','dailyPrices','supplyInvoices'), async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 1;
     const [sold] = await query(`
@@ -61,7 +61,7 @@ router.get('/sold', requireModule('products'), async (req, res) => {
   }
 });
 
-router.get('/:id', requireModule('products'), async (req, res) => {
+router.get('/:id', requireAny('products','pos','dailyPrices','supplyInvoices'), async (req, res) => {
   try {
     const [products] = await query('SELECT * FROM products WHERE id = ? AND active = 1', [req.params.id]);
     if (products.length === 0) {

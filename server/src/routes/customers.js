@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { requireModule } from '../auth.js';
+import { requireModule, requireAny } from '../auth.js';
 
 const router = Router();
 
-router.get('/', requireModule('customers'), async (req, res) => {
+router.get('/', requireAny('customers', 'pos', 'saleInvoices', 'debts', 'otherSales'), async (req, res) => {
   try {
     const [customers] = await query('SELECT * FROM customers ORDER BY name');
     return res.json(customers);
@@ -14,7 +14,7 @@ router.get('/', requireModule('customers'), async (req, res) => {
   }
 });
 
-router.get('/:id', requireModule('customers'), async (req, res) => {
+router.get('/:id', requireAny('customers', 'pos', 'saleInvoices', 'debts', 'otherSales'), async (req, res) => {
   try {
     const [customers] = await query('SELECT * FROM customers WHERE id = ?', [req.params.id]);
     if (customers.length === 0) {
@@ -35,7 +35,7 @@ router.get('/:id', requireModule('customers'), async (req, res) => {
   }
 });
 
-router.post('/', requireModule('customers'), async (req, res) => {
+router.post('/', requireAny('customers', 'pos'), async (req, res) => {
   try {
     const { name, phone, address } = req.body;
     if (!name) {

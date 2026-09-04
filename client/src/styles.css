@@ -1962,3 +1962,41 @@ table { border-collapse: collapse; width: 100%; }
   .main-content { margin-left: 0 !important; }
   .page-content { padding: 0 !important; }
 }
+
+/* ========================================
+   USERS & AUDIT (user management + logs)
+   ======================================== */
+.muted-text { color: var(--gray-500, #9aa0ac); font-size: 0.78rem; }
+.select-input {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--gray-200, #d5d9e0);
+  border-radius: var(--radius-sm, 8px); background: #fff; font-size: 0.85rem;
+}
+.users-pages-cell { max-width: 220px; display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px; }
+.users-pages-cell .badge { font-size: 0.65rem; }
+.toggle-check {
+  display: flex; align-items: center; gap: 10px; margin: 10px 0;
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
+}
+.toggle-check input { width: 18px; height: 18px; accent-color: var(--primary, #2563eb); }
+.users-perms-block { margin-top: 6px; }
+.users-perms-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 8px; }
+.users-perms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.perm-chip {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--gray-200, #d5d9e0); border-radius: var(--radius-sm, 8px);
+  font-size: 0.78rem; cursor: pointer; background: #fff; transition: all .15s;
+}
+.perm-chip input { accent-color: var(--primary, #2563eb); }
+.perm-chip-on { border-color: var(--primary, #2563eb); background: var(--primary-50, #eff6ff); color: var(--primary, #2563eb); }
+.audit-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.audit-filters .input-group { margin-bottom: 0; }
+.audit-filter-btn { align-self: flex-end; }
+.audit-ip {
+  background: var(--gray-100, #f3f4f6); border: 1px solid var(--gray-200, #d5d9e0);
+  padding: 2px 8px; border-radius: var(--radius-sm, 6px); font-size: 0.75rem;
+}
+@media (max-width: 640px) {
+  .audit-filters { flex-direction: column; align-items: stretch; }
+  .audit-filters .input-group { min-width: 0 !important; }
+  .audit-filter-btn { width: 100%; }
+}

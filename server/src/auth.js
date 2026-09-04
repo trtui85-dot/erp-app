@@ -4,7 +4,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'erp-secret-key-2024';
 
 export function generateToken(user) {
   return jwt.sign(
-    { id: user.id, phone: user.phone, role: user.role, name: user.name },
+    {
+      id: user.id,
+      phone: user.phone,
+      role: user.role,
+      name: user.name,
+      see_stats: user.see_stats,
+      permissions: user.permissions || {},
+    },
     JWT_SECRET,
     { expiresIn: '24h' }
   );
@@ -40,11 +47,27 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
+export function requireStats(req, res, next) {
+  if (req.user.role === 'ADMIN' || req.user.see_stats === 1 || req.user.see_stats === true) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Statistics access disabled' });
+}
+
 export function requireModule(moduleName) {
   return (req, res, next) => {
     if (req.user.role === 'ADMIN') return next();
     const perms = parsePerms(req.user.permissions);
     if (perms[moduleName] === true) return next();
     return res.status(403).json({ error: `No permission for module: ${moduleName}` });
+  };
+}
+
+export function requireAny(...moduleNames) {
+  return (req, res, next) => {
+    if (req.user.role === 'ADMIN') return next();
+    const perms = parsePerms(req.user.permissions);
+    if (moduleNames.some((m) => perms[m] === true)) return next();
+    return res.status(403).json({ error: `No permission for modules: ${moduleNames.join(', ')}` });
   };
 }

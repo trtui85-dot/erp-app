@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireModule } from '../auth.js';
 
 const router = Router();
+router.use(requireModule('dailyJournal'));
 
 router.get('/', async (req, res) => {
   try {

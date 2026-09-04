@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireAny } from '../auth.js';
 
 const router = Router();
+router.use(requireAny('categories', 'pos'));
 
 router.get('/', async (req, res) => {
   try {

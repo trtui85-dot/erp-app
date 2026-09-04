@@ -3,8 +3,9 @@ import pool, { query } from '../db.js';
 import { requireModule } from '../auth.js';
 
 const router = Router();
+router.use(requireModule('waste'));
 
-router.get('/', requireModule('batches'), async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     let sql = `
       SELECT w.*, p.name as product_name, b.batch_code, b.purchase_price

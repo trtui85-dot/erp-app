@@ -3,6 +3,7 @@ import { query } from '../db.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { requireAny } from '../auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const storage = multer.diskStorage({
@@ -15,6 +16,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 } });
 
 const router = Router();
+router.use(requireAny('paymentMethods', 'pos'));
 
 router.get('/', async (req, res) => {
   try {

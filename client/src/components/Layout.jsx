@@ -2,12 +2,13 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth";
 import { toggleLang } from "../i18n";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   LayoutDashboard, Package, Layers, Sun, Truck, ClipboardList,
   Users, ShoppingCart, AlertTriangle, Share2, Receipt, Trash, BarChart3,
-  Settings, LogOut, MoreHorizontal, X, ChevronDown, Globe, CreditCard, Wallet, CalendarDays, FolderTree, ListPlus
+  Settings, LogOut, MoreHorizontal, X, ChevronDown, Globe, CreditCard, Wallet, CalendarDays, FolderTree, ListPlus, ShieldCheck, FileSearch
 } from "lucide-react";
+import { canAccess } from "../permissions";
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: LayoutDashboard },
@@ -29,6 +30,8 @@ const NAV_ITEMS = [
   { key: "waste", icon: Trash },
   { key: "reports", icon: BarChart3 },
   { key: "paymentMethods", icon: Wallet },
+  { key: "users", icon: ShieldCheck },
+  { key: "audit", icon: FileSearch },
   { key: "settings", icon: Settings },
 ];
 
@@ -41,6 +44,11 @@ export default function Layout({ children }) {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef(null);
+
+  const visibleItems = useMemo(() => {
+    if (user?.role === "ADMIN") return NAV_ITEMS;
+    return NAV_ITEMS.filter((n) => canAccess(user, n.key));
+  }, [user]);
 
   useEffect(() => {
     const close = (e) => {
@@ -59,11 +67,11 @@ export default function Layout({ children }) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
-  const activeKey = NAV_ITEMS.find((n) => location.pathname === `/${n.key}`)?.key || "dashboard";
-  const moreItems = NAV_ITEMS.filter((n) => !BOTTOM_KEYS.includes(n.key) && n.key !== "settings");
+  const activeKey = visibleItems.find((n) => location.pathname === `/${n.key}`)?.key || "dashboard";
+  const moreItems = visibleItems.filter((n) => !BOTTOM_KEYS.includes(n.key) && n.key !== "settings");
 
   return (
     <div className="app-layout">
@@ -76,7 +84,7 @@ export default function Layout({ children }) {
           </div>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink key={item.key} to={`/${item.key}`} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
@@ -113,7 +121,7 @@ export default function Layout({ children }) {
       {/* Bottom nav mobile */}
       {moreOpen && <div className="more-backdrop" onClick={() => setMoreOpen(false)} />}
       <nav className="bottom-nav">
-        {BOTTOM_KEYS.filter((k) => k !== "settings").map((key) => {
+        {BOTTOM_KEYS.filter((k) => k !== "settings" && visibleItems.some((v) => v.key === k)).map((key) => {
           const item = NAV_ITEMS.find((n) => n.key === key);
           const Icon = item.icon;
           return (

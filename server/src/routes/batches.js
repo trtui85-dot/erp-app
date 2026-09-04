@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { query } from '../db.js';
-import { requireModule } from '../auth.js';
+import { requireModule, requireAny } from '../auth.js';
 
 const router = Router();
 
-router.get('/low-stock', requireModule('batches'), async (req, res) => {
+router.get('/low-stock', requireAny('batches', 'pos'), async (req, res) => {
   try {
     const [batches] = await query(`
       SELECT b.*, p.name as product_name, p.min_stock, s.name as supplier_name
@@ -21,7 +21,7 @@ router.get('/low-stock', requireModule('batches'), async (req, res) => {
   }
 });
 
-router.get('/', requireModule('batches'), async (req, res) => {
+router.get('/', requireAny('batches', 'pos'), async (req, res) => {
   try {
     let sql = `
       SELECT b.*, p.name as product_name, p.shelf_life_days, p.category_id, s.name as supplier_name,

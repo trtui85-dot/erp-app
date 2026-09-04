@@ -163,8 +163,12 @@ async function migrate() {
       role VARCHAR(20) DEFAULT 'WORKER',
       worker_id INT NULL,
       permissions JSONB NULL,
+      see_stats SMALLINT DEFAULT 1,
       active SMALLINT DEFAULT 1
     )`);
+
+    await conn.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS see_stats SMALLINT DEFAULT 1`);
+    await conn.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB NULL`);
 
     await conn.query(`CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY,
@@ -514,6 +518,41 @@ async function migrate() {
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_id INT NULL`);
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_name VARCHAR(200) NULL`);
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(30) NULL`);
+
+    // === User / activity logs (login + actions, with IP) ===
+    await conn.query(`CREATE TABLE IF NOT EXISTS user_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INT NULL,
+      user_name VARCHAR(100) NULL,
+      user_phone VARCHAR(20) NULL,
+      action VARCHAR(150) NOT NULL,
+      details TEXT NULL,
+      ip VARCHAR(64) NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await conn.query(`CREATE INDEX IF NOT EXISTS idx_user_logs_user ON user_logs(user_id)`);
+    await conn.query(`CREATE INDEX IF NOT EXISTS idx_user_logs_created ON user_logs(created_at)`);
+
+    // Keep the legacy erp_app schema in sync (runtime search_path = 'erp_app, public')
+    await conn.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema='erp_app' AND table_name='users') THEN
+          CREATE TABLE IF NOT EXISTS erp_app.user_logs (
+            id SERIAL PRIMARY KEY,
+            user_id INT NULL,
+            user_name VARCHAR(100) NULL,
+            user_phone VARCHAR(20) NULL,
+            action VARCHAR(150) NOT NULL,
+            details TEXT NULL,
+            ip VARCHAR(64) NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_user_logs_user ON erp_app.user_logs(user_id);
+          CREATE INDEX IF NOT EXISTS idx_user_logs_created ON erp_app.user_logs(created_at);
+          EXECUTE 'ALTER TABLE erp_app.users ADD COLUMN IF NOT EXISTS see_stats SMALLINT DEFAULT 1';
+        END IF;
+      END $$`);
 
     const adminCheck = await conn.query('SELECT id FROM users WHERE phone = $1', ['22222222']);
     if (adminCheck.rows.length === 0) {

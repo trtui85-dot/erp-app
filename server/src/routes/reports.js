@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { query } from '../db.js';
+import { requireModule } from '../auth.js';
 
 const router = Router();
+router.use(requireModule('reports'));
 
 router.get('/profit', async (req, res) => {
   try {

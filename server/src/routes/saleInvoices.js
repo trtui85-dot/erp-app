@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import pool, { query } from '../db.js';
-import { requireModule } from '../auth.js';
+import { requireModule, requireAny } from '../auth.js';
 
 const router = Router();
 
-router.get('/', requireModule('saleInvoices'), async (req, res) => {
+router.get('/', requireAny('saleInvoices', 'pos'), async (req, res) => {
   try {
     const [invoices] = await query(`
       SELECT si.*, c.name as customer_name, c.phone as customer_phone, pm.name AS payment_method_name, pm.icon AS payment_method_icon
@@ -20,7 +20,7 @@ router.get('/', requireModule('saleInvoices'), async (req, res) => {
   }
 });
 
-router.get('/:id', requireModule('saleInvoices'), async (req, res) => {
+router.get('/:id', requireAny('saleInvoices', 'pos'), async (req, res) => {
   try {
     const [invoices] = await query(`
       SELECT si.*, c.name as customer_name, c.phone as customer_phone, pm.name AS payment_method_name
@@ -46,7 +46,7 @@ router.get('/:id', requireModule('saleInvoices'), async (req, res) => {
   }
 });
 
-router.post('/', requireModule('saleInvoices'), async (req, res) => {
+router.post('/', requireAny('saleInvoices', 'pos'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -159,7 +159,7 @@ router.post('/', requireModule('saleInvoices'), async (req, res) => {
   }
 });
 
-router.delete('/:id', requireModule('saleInvoices'), async (req, res) => {
+router.delete('/:id', requireAny('saleInvoices', 'pos'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
