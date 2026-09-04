@@ -40,8 +40,8 @@ router.get('/stats', async (req, res) => {
       LEFT JOIN batches b ON b.product_id = p.id AND b.status = 'active'
       WHERE p.active = 1
       GROUP BY p.id, p.name, p.min_stock
-      HAVING total_remaining <= p.min_stock
-      ORDER BY total_remaining ASC
+      HAVING COALESCE(SUM(b.remaining_qty), 0) <= MIN(p.min_stock)
+      ORDER BY COALESCE(SUM(b.remaining_qty), 0) ASC
     `);
 
     const [dangerBatches] = await query(`
