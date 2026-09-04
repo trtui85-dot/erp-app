@@ -7,7 +7,7 @@ import { PageLoader, SearchSelect } from "../components/ui";
 import { Plus, Trash2, Check, X, Wallet, Smartphone, CreditCard, Building2, Send, Banknote, Printer, ChevronLeft, ListPlus } from "lucide-react";
 
 const emptyOtherItem = { product_name: "", unit: "kg", qty: 1, price: "" };
-const UNITS = ["kg", "g", "caissi", "sac", "pièce", "carton", "bouteille", "lot"];
+const UNITS = ["kg", "sac", "bouteille", "poche", "pack"];
 
 const METHOD_ICONS = { Wallet, Smartphone, CreditCard, Building2, Send, Banknote };
 

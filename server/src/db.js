@@ -484,54 +484,79 @@ async function migrate() {
     if (Number(catCheck.rows[0].c) === 0) {
       await conn.query(`INSERT INTO categories (name, name_ar, icon, color, sort_order) VALUES
         ('Légumes', 'الخضروات', '🥬', '#22c55e', 1),
-        ('Denrées alimentaires', 'المواد الغذائية', '🌾', '#f59e0b', 2),
-        ('Viandes', 'اللحوم', '🥩', '#ef4444', 3),
-        ('Fruits', 'الفواكه', '🍎', '#f97316', 4),
-        ('Épices & Condiments', 'التوابل والبهارات', '🧂', '#8b5cf6', 5),
-        ('Produits laitiers', 'منتجات الألبان', '🧀', '#06b6d4', 6),
-        ('Autres', 'أخرى', '📦', '#6b7280', 99)
+        ('Céréales & Sec', 'الحبوب والمواد الجافة', '🌾', '#f59e0b', 2),
+        ('Laitiers & Boissons', 'الألبان والمشروبات', '🥛', '#06b6d4', 3),
+        ('Épices & Cuisine', 'مواد الطبخ والتوابل', '🧂', '#8b5cf6', 4),
+        ('Autres denrées', 'مواد غذائية أخرى', '🍪', '#6b7280', 5)
       `);
     }
 
-    const prodCheck = await conn.query('SELECT COUNT(*) AS c FROM products');
-    if (Number(prodCheck.rows[0].c) === 0) {
-      await conn.query(`INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES
-        ('Tomates', 'kg', 'fixed', 350, 20, 5, 1),
-        ('Oignons', 'kg', 'fixed', 200, 30, 14, 1),
-        ('Pommes de terre', 'kg', 'fixed', 250, 40, 21, 1),
-        ('Carottes', 'kg', 'fixed', 300, 15, 10, 1),
-        ('Concombres', 'kg', 'fixed', 280, 20, 5, 1),
-        ('Poivrons', 'kg', 'fixed', 400, 10, 7, 1),
-        ('Aubergines', 'kg', 'fixed', 320, 15, 5, 1),
-        ('Haricots verts', 'kg', 'fixed', 450, 10, 7, 1),
-        ('Choux', 'kg', 'fixed', 180, 20, 10, 1),
-        ('Laitue', 'pièce', 'fixed', 100, 30, 3, 1),
-        ('Riz importé', 'kg', 'fixed', 500, 50, 365, 2),
-        ('Sucre', 'kg', 'fixed', 400, 40, 365, 2),
-        ('Huile végétale', 'litre', 'fixed', 600, 30, 180, 2),
-        ('Farine', 'kg', 'fixed', 280, 50, 180, 2),
-        ('Pâtes alimentaires', 'kg', 'fixed', 350, 30, 365, 2),
-        ('Couscous', 'kg', 'fixed', 450, 25, 365, 2),
-        ('Thé vert', 'kg', 'fixed', 2000, 10, 365, 2),
-        ('Café torréfié', 'kg', 'fixed', 3500, 5, 180, 2),
-        ('Poulet entier', 'kg', 'variable', 1200, 20, 3, 3),
-        ('Bœuf haché', 'kg', 'variable', 2500, 15, 2, 3),
-        ('Agneau', 'kg', 'variable', 3000, 10, 2, 3),
-        ('Poisson frais', 'kg', 'variable', 1800, 15, 2, 3),
-        ('Œufs', 'pièce', 'fixed', 15, 100, 21, 3),
-        ('Pommes', 'kg', 'fixed', 400, 20, 14, 4),
-        ('Oranges', 'kg', 'fixed', 300, 25, 14, 4),
-        ('Bananes', 'kg', 'fixed', 350, 20, 5, 4),
-        ('Citrons', 'kg', 'fixed', 250, 15, 21, 4),
-        ('Mangue', 'kg', 'variable', 500, 10, 5, 4),
-        ('Beurre', 'kg', 'fixed', 1500, 10, 30, 6),
-        ('Fromage blanc', 'kg', 'fixed', 800, 15, 7, 6),
-        ('Lait', 'litre', 'fixed', 350, 30, 7, 6),
-        ('Poivre noir', 'kg', 'fixed', 8000, 2, 365, 5),
-        ('Cumin', 'kg', 'fixed', 4000, 3, 365, 5),
-        ('Piment en poudre', 'kg', 'fixed', 3000, 3, 365, 5),
-        ('Sel', 'kg', 'fixed', 100, 20, 365, 5)
-      `);
+    // === ONE-TIME: REPLACE OLD PRODUCTS WITH NEW HASSANIYA PRODUCTS ===
+    const oldCheck = await conn.query(`SELECT COUNT(*) AS c FROM products WHERE name IN ('Tomates','Oignons','Riz importé')`);
+    if (Number(oldCheck.rows[0].c) > 0) {
+      console.log('Migration: replacing old French products with Hassaniya products...');
+      await conn.query('DELETE FROM sale_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+      await conn.query('DELETE FROM supply_invoice_items WHERE batch_id IN (SELECT id FROM batches)');
+      await conn.query('DELETE FROM batches');
+      await conn.query('DELETE FROM sale_invoices');
+      await conn.query('DELETE FROM supply_invoices');
+      await conn.query('DELETE FROM products');
+    }
+
+    const prodCheck2 = await conn.query('SELECT COUNT(*) AS c FROM products');
+    if (Number(prodCheck2.rows[0].c) === 0) {
+
+    // Get category IDs
+    const cats = await conn.query('SELECT id, name_ar FROM categories');
+    const catMap = {};
+    for (const c of cats.rows) catMap[c.name_ar] = c.id;
+
+    await conn.query(`INSERT INTO products (name, unit, price_type, current_sale_price, min_stock, shelf_life_days, category_id) VALUES
+      -- 🥬 الخضروات
+      ('تماته', 'bouteille', 'fixed', 350, 20, 5, ${catMap['الخضروات'] || 1}),
+      ('بومپتير', 'sac', 'fixed', 250, 40, 21, ${catMap['الخضروات'] || 1}),
+      ('لبصل', 'sac', 'fixed', 200, 30, 14, ${catMap['الخضروات'] || 1}),
+      ('كاروت', 'bouteille', 'fixed', 300, 15, 10, ${catMap['الخضروات'] || 1}),
+      ('برجيم', 'bouteille', 'fixed', 320, 15, 5, ${catMap['الخضروات'] || 1}),
+      ('امبطاص', 'bouteille', 'fixed', 400, 10, 7, ${catMap['الخضروات'] || 1}),
+      ('الديوك', 'bouteille', 'fixed', 280, 15, 10, ${catMap['الخضروات'] || 1}),
+      ('لخيار', 'bouteille', 'fixed', 280, 20, 5, ${catMap['الخضروات'] || 1}),
+      ('بافروه لخضر', 'bouteille', 'fixed', 180, 20, 10, ${catMap['الخضروات'] || 1}),
+      ('بافروه لحمر', 'bouteille', 'fixed', 180, 20, 10, ${catMap['الخضروات'] || 1}),
+      -- 🌾 الحبوب والمواد الجافة
+      ('الأرز', 'sac', 'fixed', 500, 50, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('وركل', 'sac', 'fixed', 300, 30, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('القمح', 'sac', 'fixed', 280, 40, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('الشعير', 'sac', 'fixed', 250, 30, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('مارو', 'sac', 'fixed', 200, 20, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('كسكس', 'sac', 'fixed', 450, 25, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('دقتني', 'sac', 'fixed', 300, 20, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('بصام المبلول', 'sac', 'fixed', 350, 20, 30, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      ('بصام اليابس', 'sac', 'fixed', 280, 20, 365, ${catMap['الحبوب والمواد الجافة'] || 2}),
+      -- 🥛 الألبان والمشروبات
+      ('البن', 'poche', 'fixed', 2200, 10, 180, ${catMap['الألبان والمشروبات'] || 3}),
+      ('الحليب', 'poche', 'fixed', 350, 30, 7, ${catMap['الألبان والمشروبات'] || 3}),
+      ('القشطة', 'poche', 'fixed', 400, 20, 30, ${catMap['الألبان والمشروبات'] || 3}),
+      ('لبن', 'poche', 'fixed', 300, 25, 14, ${catMap['الألبان والمشروبات'] || 3}),
+      ('العصير', 'poche', 'fixed', 250, 30, 30, ${catMap['الألبان والمشروبات'] || 3}),
+      -- 🧂 مواد الطبخ والتوابل
+      ('الملح', 'poche', 'fixed', 100, 20, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('السكر', 'sac', 'fixed', 400, 40, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('الزيت', 'poche', 'fixed', 600, 30, 180, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('الزعفران', 'poche', 'fixed', 5000, 5, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('الفلفل', 'poche', 'fixed', 3000, 5, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('الكمون', 'poche', 'fixed', 2500, 5, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      ('التوابل المشكلة', 'poche', 'fixed', 3000, 5, 365, ${catMap['مواد الطبخ والتوابل'] || 4}),
+      -- 🍪 مواد غذائية أخرى
+      ('البسكويت', 'pack', 'fixed', 350, 20, 90, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('المعكرونة', 'pack', 'fixed', 350, 25, 365, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('الخبز', 'poche', 'fixed', 150, 30, 3, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('الشاي', 'poche', 'fixed', 1200, 10, 365, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('القهوة', 'poche', 'fixed', 2200, 10, 180, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('المربى', 'poche', 'fixed', 500, 15, 180, ${catMap['مواد غذائية أخرى'] || 5}),
+      ('الشوكولاتة', 'pack', 'fixed', 400, 20, 180, ${catMap['مواد غذائية أخرى'] || 5})
+    `);
+    console.log('Seed: 39 products inserted');
     }
 
     const supCheck = await conn.query('SELECT COUNT(*) AS c FROM suppliers');
@@ -572,14 +597,15 @@ async function migrate() {
       const suppliers = await conn.query('SELECT id FROM suppliers ORDER BY id');
 
       const purchasePrices = {
-        'Tomates': 150, 'Oignons': 80, 'Pommes de terre': 100, 'Carottes': 120, 'Concombres': 110,
-        'Poivrons': 180, 'Aubergines': 130, 'Haricots verts': 200, 'Choux': 70, 'Laitue': 40,
-        'Riz importé': 350, 'Sucre': 280, 'Huile végétale': 450, 'Farine': 180, 'Pâtes alimentaires': 220,
-        'Couscous': 300, 'Thé vert': 1200, 'Café torréfié': 2200,
-        'Poulet entier': 700, 'Bœuf haché': 1600, 'Agneau': 2000, 'Poisson frais': 1100, 'Œufs': 8,
-        'Pommes': 250, 'Oranges': 150, 'Bananes': 200, 'Citrons': 120, 'Mangue': 300,
-        'Beurre': 900, 'Fromage blanc': 500, 'Lait': 220,
-        'Poivre noir': 5000, 'Cumin': 2500, 'Piment en poudre': 1800, 'Sel': 40
+        'تماته': 150, 'بومپتير': 80, 'لبصل': 80, 'كاروت': 120, 'برجيم': 130,
+        'امبطاص': 180, 'الديوك': 100, 'لخيار': 110, 'بافروه لخضر': 70, 'بافروه لحمر': 70,
+        'الأرز': 350, 'وركل': 200, 'القمح': 180, 'الشعير': 150, 'مارو': 120,
+        'كسكس': 300, 'دقتني': 200, 'بصام المبلول': 250, 'بصام اليابس': 200,
+        'البن': 1500, 'الحليب': 200, 'القشطة': 250, 'لبن': 180, 'العصير': 150,
+        'الملح': 40, 'السكر': 280, 'الزيت': 450, 'الزعفران': 3500, 'الفلفل': 2000,
+        'الكمون': 1800, 'التوابل المشكلة': 2000,
+        'البسكويت': 200, 'المعكرونة': 180, 'الخبز': 80, 'الشاي': 800, 'القهوة': 1500,
+        'المربى': 300, 'الشوكولاتة': 250
       };
 
       const today = new Date().toISOString().split('T')[0];

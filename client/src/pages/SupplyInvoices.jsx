@@ -5,7 +5,7 @@ import { useToast } from "../components/toast";
 import { PageLoader, DataTable, SearchSelect } from "../components/ui";
 import { Plus, Trash2, ClipboardList, Printer, Search, ChevronLeft, CalendarDays, UserPlus, X, Check, PackagePlus } from "lucide-react";
 
-const UNIT_OPTS = ["kg", "g", "caissi", "sac", "carton", "bouteille", "pièce", "lot"];
+const UNIT_OPTS = ["kg", "sac", "bouteille", "poche", "pack"];
 
 function ProductPicker({ options, onPick }) {
   const { t } = useTranslation();
