@@ -519,6 +519,30 @@ async function migrate() {
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS product_name VARCHAR(200) NULL`);
     await conn.query(`ALTER TABLE sale_invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(30) NULL`);
 
+    // Backfill missing product_id / product_unit_id / product_name on old sale items
+    // (POS used to store only batch_id, which left product names blank in invoices)
+    await conn.query(`
+      UPDATE sale_invoice_items sii SET product_id = b.product_id,
+        product_unit_id = COALESCE(sii.product_unit_id, b.product_unit_id),
+        product_name = COALESCE(sii.product_name, p.name)
+      FROM batches b
+      LEFT JOIN products p ON p.id = b.product_id
+      WHERE sii.batch_id = b.id AND sii.product_id IS NULL`);
+    await conn.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema='erp_app' AND table_name='sale_invoice_items') THEN
+          EXECUTE 'ALTER TABLE erp_app.sale_invoice_items ADD COLUMN IF NOT EXISTS product_id INT NULL';
+          EXECUTE 'ALTER TABLE erp_app.sale_invoice_items ADD COLUMN IF NOT EXISTS product_name VARCHAR(200) NULL';
+          EXECUTE 'UPDATE erp_app.sale_invoice_items sii SET product_id = b.product_id,
+            product_unit_id = COALESCE(sii.product_unit_id, b.product_unit_id),
+            product_name = COALESCE(sii.product_name, p.name)
+            FROM erp_app.batches b
+            LEFT JOIN erp_app.products p ON p.id = b.product_id
+            WHERE sii.batch_id = b.id AND sii.product_id IS NULL';
+        END IF;
+      END $$`);
+
     // === User / activity logs (login + actions, with IP) ===
     await conn.query(`CREATE TABLE IF NOT EXISTS user_logs (
       id SERIAL PRIMARY KEY,

@@ -36,7 +36,7 @@ router.get('/:id', requireAny('saleInvoices', 'pos'), async (req, res) => {
       SELECT sii.*, COALESCE(sii.product_name, p.name) as product_name, b.batch_code, b.remaining_qty as batch_remaining_qty
       FROM sale_invoice_items sii
       LEFT JOIN batches b ON sii.batch_id = b.id
-      LEFT JOIN products p ON p.id = sii.product_id
+      LEFT JOIN products p ON p.id = COALESCE(sii.product_id, b.product_id)
       WHERE sii.invoice_id = ?
     `, [req.params.id]);
     return res.json({ ...invoices[0], items });
@@ -98,15 +98,24 @@ router.post('/', requireAny('saleInvoices', 'pos'), async (req, res) => {
       const isFree = !item.batch_id;
       let productId = item.product_id || null;
       let productUnitId = item.product_unit_id || null;
-      if (isFree && item.product_name) {
+      let productName = item.product_name || null;
+      if (item.batch_id) {
+        const [bRow] = await conn.execute(
+          'SELECT b.product_id, b.product_unit_id, p.name AS product_name FROM batches b LEFT JOIN products p ON p.id = b.product_id WHERE b.id = ?',
+          [item.batch_id]
+        );
+        if (bRow.length > 0) {
+          productId = bRow[0].product_id || null;
+          productUnitId = bRow[0].product_unit_id || null;
+          productName = bRow[0].product_name || null;
+        }
+      } else if (isFree && item.product_name) {
         productId = null;
-      } else if (!productUnitId && item.batch_id) {
-        const [bRow] = await conn.execute('SELECT product_unit_id FROM batches WHERE id = ?', [item.batch_id]);
-        if (bRow.length > 0) productUnitId = bRow[0].product_unit_id || null;
+        productName = item.product_name;
       }
       await conn.execute(
         'INSERT INTO sale_invoice_items (invoice_id, batch_id, product_id, product_unit_id, product_name, qty, price, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [invoiceId, item.batch_id || null, productId, productUnitId, item.product_name || null, item.qty, item.price, itemTotal]
+        [invoiceId, item.batch_id || null, productId, productUnitId, productName, item.qty, item.price, itemTotal]
       );
       if (!isFree) {
         await conn.execute(
@@ -148,7 +157,7 @@ router.post('/', requireAny('saleInvoices', 'pos'), async (req, res) => {
     await conn.commit();
 
     const [invoice] = await query('SELECT * FROM sale_invoices WHERE id = ?', [invoiceId]);
-    const [invoiceItems] = await query('SELECT sii.*, COALESCE(sii.product_name, p.name) AS product_name FROM sale_invoice_items sii LEFT JOIN batches b ON sii.batch_id = b.id LEFT JOIN products p ON p.id = sii.product_id WHERE invoice_id = ?', [invoiceId]);
+    const [invoiceItems] = await query('SELECT sii.*, COALESCE(sii.product_name, p.name) AS product_name FROM sale_invoice_items sii LEFT JOIN batches b ON sii.batch_id = b.id LEFT JOIN products p ON p.id = COALESCE(sii.product_id, b.product_id) WHERE invoice_id = ?', [invoiceId]);
     return res.status(201).json({ ...invoice[0], items: invoiceItems });
   } catch (err) {
     await conn.rollback();
