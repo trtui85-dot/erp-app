@@ -1,57 +1,12 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, DataTable, SearchSelect } from "../components/ui";
-import { Plus, Trash2, ClipboardList, Printer, Search, ChevronLeft, X, Check } from "lucide-react";
+import { Plus, Trash2, ClipboardList, Printer, ChevronLeft, Check } from "lucide-react";
+import ProductGrid, { useStockMap } from "../components/ProductGrid";
 
 const UNIT_OPTS = ["كيل", "كيس", "الربطة", "بكط", "بطة", "بوش"];
-
-function ProductGrid({ products, categories, selectedCat, setSelectedCat, onPick }) {
-  const { t } = useTranslation();
-  const [q, setQ] = useState("");
-  const filtered = useMemo(() => {
-    const list = (products || []).filter(
-      (p) => (!q || p.name.includes(q)) && (!selectedCat || p.category_id === selectedCat)
-    );
-    return list;
-  }, [products, q, selectedCat]);
-  return (
-    <div className="pos-grid-wrap">
-      <div className="pos-search" style={{ padding: "8px" }}>
-        <Search size={16} style={{ color: "var(--gray-400)", flexShrink: 0 }} />
-        <input className="search-input" placeholder={t("supplyInvoices.searchProduct") || "بحث عن منتج..."} value={q} onChange={(e) => setQ(e.target.value)} />
-        {q && <X size={14} style={{ cursor: "pointer" }} onClick={() => setQ("")} />}
-      </div>
-      <div className="pos-cat-chips">
-        <button type="button" className={`pos-cat-chip${!selectedCat ? " active" : ""}`} onClick={() => setSelectedCat(null)}>الكل</button>
-        {categories.map((c) => (
-          <button key={c.id} type="button" className={`pos-cat-chip${selectedCat === c.id ? " active" : ""}`} onClick={() => setSelectedCat(selectedCat === c.id ? null : c.id)}>
-            {c.name_ar || c.name}
-          </button>
-        ))}
-      </div>
-      <div className="pos-grid">
-        {filtered.map((p) => {
-          const units = (p.units && p.units.length && p.units.filter((u) => u.active !== 0)) ? p.units.filter((u) => u.active !== 0) : [{ unit: p.unit || "كيس" }];
-          return (
-            <button key={p.id} type="button" className="pos-grid-item">
-              <span className="pos-grid-name">{p.name}</span>
-              <span className="pos-grid-units">
-                {units.map((u) => (
-                  <span key={(u.id || u.unit)} className="pos-grid-unit-chip" onClick={(e) => { e.stopPropagation(); onPick(p, u); }}>
-                    {u.unit}
-                  </span>
-                ))}
-              </span>
-            </button>
-          );
-        })}
-        {filtered.length === 0 && <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--gray-400)", padding: 20 }}>{t("supplyInvoices.searchProduct") || "لا توجد منتجات"}</div>}
-      </div>
-    </div>
-  );
-}
 
 export default function SupplyInvoices() {
   const { t } = useTranslation();
@@ -59,8 +14,8 @@ export default function SupplyInvoices() {
   const [invoices, setInvoices] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedCat, setSelectedCat] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -75,18 +30,22 @@ export default function SupplyInvoices() {
   const [totalCost, setTotalCost] = useState("");
   const [loadingSold, setLoadingSold] = useState(false);
 
+  const stockMap = useStockMap(batches);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, supRes, prodRes, catRes] = await Promise.all([
+      const [invRes, supRes, prodRes, batRes, catRes] = await Promise.all([
         http.get("/supplyinvoices"),
         http.get("/suppliers"),
         http.get("/products"),
+        http.get("/batches").catch(() => ({ data: [] })),
         http.get("/categories").catch(() => ({ data: [] })),
       ]);
       setInvoices(invRes.data);
       setSuppliers(supRes.data);
       setProducts(prodRes.data);
+      setBatches(batRes.data);
       setCategories(catRes.data);
     } catch {}
     finally { setLoading(false); }
@@ -118,6 +77,7 @@ export default function SupplyInvoices() {
         product_id: p.product_id,
         name: p.product_name,
         unit: p.unit || "kg",
+        stock: stockMap[`p_${p.product_id}`] || 0,
         qty: p.qty_sold || 1,
         sale_price: p.current_sale_price || "",
         purchase_price: "",
@@ -128,18 +88,19 @@ export default function SupplyInvoices() {
     } catch (err) { toast.error(err.message || "Erreur"); setLoadingSold(false); }
   };
 
-  const addManualProduct = (prod, unitObj) => {
-    const unit = unitObj ? (unitObj.unit || prod.unit || "كيس") : (prod.unit || "كيس");
-    const unitId = unitObj && unitObj.id ? unitObj.id : null;
+  const addManualProduct = (prod, entry) => {
+    const unit = entry ? (entry.unit || prod.unit || "كيس") : (prod.unit || "كيس");
+    const unitId = entry ? (entry.product_unit_id || null) : null;
     if (items.some((i) => i.product_id === prod.id && (i.product_unit_id || null) === unitId)) { toast.error(t("supplyInvoices.alreadyAdded") || "المنتج موجود بالفعل"); return; }
     setItems((prev) => [...prev, {
       product_id: prod.id,
       product_unit_id: unitId,
       name: prod.name,
       unit,
+      stock: entry ? entry.stock : undefined,
       qty: 1,
-      sale_price: (unitObj && unitObj.current_sale_price) ? unitObj.current_sale_price : (prod.current_sale_price || ""),
-      purchase_price: (unitObj && unitObj.purchase_price) ? unitObj.purchase_price : "",
+      sale_price: entry && entry.price > 0 ? entry.price : (prod.current_sale_price || ""),
+      purchase_price: "",
       expiry_date: "",
     }]);
   };
@@ -357,7 +318,7 @@ export default function SupplyInvoices() {
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => addSoldProducts(4)} disabled={loadingSold}>{t("supplyInvoices.fourDays") || "4 أيام"}</button>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => addSoldProducts(7)} disabled={loadingSold}>{t("supplyInvoices.week") || "الأسبوع"}</button>
             </div>
-            <ProductGrid products={products} categories={categories} selectedCat={selectedCat} setSelectedCat={setSelectedCat} onPick={addManualProduct} />
+            <ProductGrid products={products} batches={batches} categories={categories} onPick={addManualProduct} />
           </div>
 
           {/* Items */}
@@ -369,6 +330,9 @@ export default function SupplyInvoices() {
               <div key={it.product_id} className="sup-item">
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <span style={{ fontWeight: 600, flex: 1 }}>{it.name}</span>
+                  {!(it.stock === undefined) && (
+                    <span style={{ fontSize: "0.73rem", color: "var(--gray-500)" }}>{t("pos.stock")}: <b>{it.stock} {it.unit}</b></span>
+                  )}
                   <button className="icon-btn icon-btn-danger" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 size={16} /></button>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

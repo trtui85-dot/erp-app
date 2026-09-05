@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, SearchSelect } from "../components/ui";
+import { useStockMap, productUnitEntries } from "../components/ProductGrid";
 import { Plus, Trash2, Check, X, Wallet, Smartphone, CreditCard, Building2, Send, Banknote, Printer, ChevronLeft, ListPlus } from "lucide-react";
 
 const emptyOtherItem = { product_name: "", unit: "kg", qty: 1, price: "" };
@@ -18,6 +19,7 @@ export default function OtherSales() {
   const [customers, setCustomers] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [products, setProducts] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([{ ...emptyOtherItem }]);
   const [payment, setPayment] = useState(null);
@@ -33,14 +35,17 @@ export default function OtherSales() {
       http.get("/customers").catch(() => ({ data: [] })),
       http.get("/paymentmethods").catch(() => ({ data: [] })),
       http.get("/products").catch(() => ({ data: [] })),
-    ]).then(([cRes, pmRes, pRes]) => {
+      http.get("/batches").catch(() => ({ data: [] })),
+    ]).then(([cRes, pmRes, pRes, bRes]) => {
       setCustomers(cRes.data);
       setPaymentMethods(pmRes.data);
       setProducts(pRes.data);
+      setBatches(bRes.data);
       if (pmRes.data.length > 0) setPayment(pmRes.data[0]);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const stockMap = useStockMap(batches);
   const productNames = products.map((p) => p.name);
 
   const updateItem = (idx, field, value) => {
@@ -49,11 +54,12 @@ export default function OtherSales() {
 
   const pickExisting = (idx, name) => {
     const prod = products.find((p) => p.name === name);
+    const entries = prod ? productUnitEntries(prod, stockMap) : [];
     setItems(items.map((it, i) => i === idx ? {
       ...it,
       product_name: name,
-      unit: prod?.unit || it.unit,
-      price: prod?.current_sale_price ? prod.current_sale_price : it.price,
+      unit: entries[0]?.unit || prod?.unit || it.unit,
+      price: entries[0]?.price || prod?.current_sale_price || it.price,
     } : it));
     setOpenSuggest(-1);
   };
@@ -158,6 +164,9 @@ export default function OtherSales() {
           const suggestions = it.product_name.trim()
             ? productNames.filter((n) => n.toLowerCase().includes(it.product_name.trim().toLowerCase())).slice(0, 6)
             : productNames.slice(0, 6);
+          const matched = products.find((p) => p.name.trim().toLowerCase() === it.product_name.trim().toLowerCase());
+          const catalogUnits = matched ? productUnitEntries(matched, stockMap) : [];
+          const lineTotal = (Number(it.qty || 0) * Number(it.price || 0));
           return (
             <div key={idx} className="pos-other-card" ref={(el) => { if (idx === openSuggest) suggestRef.current = el; }}>
               <div className="pos-other-suggest-wrap">
@@ -172,16 +181,28 @@ export default function OtherSales() {
                   </div>
                 )}
               </div>
-              <div className="pos-other-units">
-                {UNITS.map((u) => (
-                  <button key={u} type="button" className={`pos-unit-btn${it.unit === u ? " active" : ""}`} onClick={() => updateItem(idx, "unit", u)}>{u}</button>
-                ))}
-              </div>
+              {catalogUnits.length > 0 ? (
+                <div className="pos-other-units">
+                  {catalogUnits.map((e) => (
+                    <button key={e.key} type="button" className={`pos-unit-btn${it.unit === e.unit ? " active" : ""}`}
+                      onClick={() => { updateItem(idx, "unit", e.unit); if (e.price > 0) updateItem(idx, "price", String(e.price)); }}>
+                      {e.unit} · {Number(e.price).toLocaleString()}<i className="pos-unit-stock"> {t("pos.stock")}: {e.stock}</i>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="pos-other-units">
+                  {UNITS.map((u) => (
+                    <button key={u} type="button" className={`pos-unit-btn${it.unit === u ? " active" : ""}`} onClick={() => updateItem(idx, "unit", u)}>{u}</button>
+                  ))}
+                </div>
+              )}
               <div className="pos-other-fields">
                 <input className="input-other" style={{ flex: 1 }} type="number" step="any" min="0" placeholder={t("pos.qty")} value={it.qty}
                   onChange={(e) => updateItem(idx, "qty", e.target.value)} />
                 <input className="input-other" style={{ flex: 1 }} type="number" step="any" min="0" placeholder={t("pos.price")} value={it.price}
                   onChange={(e) => updateItem(idx, "price", e.target.value)} />
+                <span className="pos-other-line-total">= {lineTotal.toLocaleString()} {t("app.currency")}</span>
                 <button type="button" className="icon-btn icon-btn-danger" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 size={16} /></button>
               </div>
             </div>

@@ -389,6 +389,8 @@
     "qty": "Qté",
     "price": "Prix",
     "stock": "Stock",
+    "selectUnit": "Choisir l'unité",
+    "add": "Ajouter",
     "noProducts": "Aucun produit disponible",
     "insufficientStock": "Stock insuffisant",
     "invoiceSaved": "Facture enregistrée",

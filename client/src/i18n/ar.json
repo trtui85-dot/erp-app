@@ -389,6 +389,8 @@
     "qty": "الكمية",
     "price": "السعر",
     "stock": "المخزون",
+    "selectUnit": "اختر الوحدة",
+    "add": "إضافة",
     "noProducts": "لا توجد منتجات",
     "insufficientStock": "المخزون غير كافٍ",
     "invoiceSaved": "تم حفظ الفاتورة",

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { http } from "../api";
 import { useToast } from "../components/toast";
 import { PageLoader, Modal, SearchSelect } from "../components/ui";
+import UnitPicker from "../components/UnitPicker";
 import { ShoppingCart, Plus, Minus, Trash2, User, CreditCard, Printer, Search, X, Check, Wallet, Smartphone, Building2, Send, Banknote, ArrowDownCircle, FileText, Maximize2, Minimize2, ListPlus } from "lucide-react";
 
 const METHOD_ICONS = { Wallet, Smartphone, CreditCard, Building2, Send, Banknote };
@@ -32,6 +33,8 @@ export default function POS() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [picker, setPicker] = useState(null);
+  const [pickerPreselect, setPickerPreselect] = useState(null);
   const receiptRef = useRef(null);
 
   useEffect(() => {
@@ -66,50 +69,70 @@ export default function POS() {
     const map = {};
     batches.forEach((b) => {
       if (b.status === "active" && Number(b.remaining_qty) > 0) {
-        const key = b.product_unit_id ? `u_${b.product_unit_id}` : `p_${b.product_id}`;
-        if (!map[key]) {
-          const prod = products.find((x) => x.id === b.product_id);
-          const unitObj = (prod && prod.units && prod.units.find((u) => u.id === b.product_unit_id)) || null;
-          map[key] = {
-            ...b,
-            total_stock: 0,
+        const prod = products.find((x) => x.id === b.product_id);
+        const unitObj = (prod && prod.units && prod.units.find((u) => u.id === b.product_unit_id)) || null;
+        const gkey = `p_${b.product_id}`;
+        if (!map[gkey]) {
+          map[gkey] = { product_id: b.product_id, name: b.product_name, category_id: b.category_id, units: new Map() };
+        }
+        const ukey = b.product_unit_id ? `u_${b.product_unit_id}` : gkey;
+        let entry = map[gkey].units.get(ukey);
+        if (!entry) {
+          entry = {
+            key: ukey,
+            name: b.product_name,
             product_id: b.product_id,
             product_unit_id: b.product_unit_id || null,
-            unit: unitObj ? unitObj.unit : b.unit,
-            product_name: b.product_name,
-            category_id: b.category_id,
-            current_sale_price: (unitObj && Number(unitObj.current_sale_price) > 0) ? Number(unitObj.current_sale_price) : (prod?.current_sale_price || b.sale_price),
+            unit: unitObj ? unitObj.unit : (b.unit || ""),
+            price: (unitObj && Number(unitObj.current_sale_price) > 0) ? Number(unitObj.current_sale_price) : (prod?.current_sale_price || b.sale_price || 0),
+            stock: 0,
+            max_qty: 0,
           };
+          map[gkey].units.set(ukey, entry);
         }
-        map[key].total_stock += Number(b.remaining_qty);
+        entry.stock += Number(b.remaining_qty);
+        entry.max_qty = Math.max(entry.max_qty, Number(b.remaining_qty));
       }
     });
-    return Object.values(map).filter((p) => {
-      if (search && !p.product_name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (selectedCategory && p.category_id !== selectedCategory) return false;
-      return true;
-    });
+    return Object.values(map)
+      .map((g) => {
+        const units = [...g.units.values()];
+        return { ...g, units, total_stock: units.reduce((s, u) => s + u.stock, 0) };
+      })
+      .filter((p) => {
+        if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (selectedCategory && p.category_id !== selectedCategory) return false;
+        return true;
+      });
   }, [batches, products, search, selectedCategory]);
 
-  const addToCart = (product) => {
-    const exKey = product.product_unit_id ? `u_${product.product_unit_id}` : `p_${product.product_id}`;
-    const existing = cart.find((c) => c.cart_key === exKey);
+  const openPicker = (product, unitKey) => {
+    setPickerPreselect(unitKey || null);
+    setPicker(product);
+  };
+
+  const addToCart = (entry, qty) => {
+    const key = entry.key;
+    const existing = cart.find((c) => c.cart_key === key);
     if (existing) {
-      setCart(cart.map((c) => c.cart_key === exKey ? { ...c, qty: c.qty + 1 } : c));
+      if (existing.qty + qty > (existing.max_qty || Infinity)) return toast.error(t("pos.insufficientStock"));
+      setCart(cart.map((c) => c.cart_key === key ? { ...c, qty: c.qty + qty } : c));
     } else {
-      const batch = batches.find((b) => b.status === "active" && Number(b.remaining_qty) > 0 && (b.product_unit_id ? b.product_unit_id === product.product_unit_id : b.product_id === product.product_id));
+      const batch = batches.find((b) => b.status === "active" && Number(b.remaining_qty) > 0 && (entry.product_unit_id ? b.product_unit_id === entry.product_unit_id : b.product_id === entry.product_id));
+      if (!batch) return toast.error(t("pos.insufficientStock"));
       setCart([...cart, {
-        cart_key: exKey,
-        product_id: product.product_id,
-        product_unit_id: product.product_unit_id || null,
-        product_name: product.unit ? `${product.product_name} (${product.unit})` : product.product_name,
-        unit: product.unit,
-        batch_id: batch?.id,
-        qty: 1,
-        price: Number(product.current_sale_price || batch?.sale_price || 0),
-        max_qty: Number(batch?.remaining_qty || 0),
+        cart_key: key,
+        product_id: entry.product_id,
+        product_unit_id: entry.product_unit_id,
+        product_name: entry.unit ? `${entry.name} (${entry.unit})` : entry.name,
+        unit: entry.unit,
+        batch_id: batch.id,
+        qty,
+        price: Number(entry.price || batch.sale_price || 0),
+        max_qty: entry.max_qty || Number(batch.remaining_qty || 0),
       }]);
     }
+    setPicker(null);
   };
 
   const updateQty = (key, delta) => {
@@ -290,10 +313,19 @@ export default function POS() {
             </thead>
             <tbody>
               {availableProducts.map((p) => (
-                <tr key={p.product_unit_id ? `u_${p.product_unit_id}` : `p_${p.product_id}`} className="pos-product-row" onClick={() => addToCart(p)}>
-                  <td className="pos-product-name">{p.product_name}{p.unit ? <span className="pos-product-unit"> ({p.unit})</span> : null}</td>
-                  <td className="pos-product-price">{Number(p.current_sale_price || p.sale_price || 0).toLocaleString()}</td>
-                  <td className="pos-product-stock">{Number(p.total_stock).toLocaleString()} {p.unit ? p.unit : ""}</td>
+                <tr key={p.product_id} className="pos-product-row" onClick={() => openPicker(p, null)}>
+                  <td className="pos-product-name">
+                    {p.name}
+                    <div className="pos-prod-units">
+                      {p.units.map((u) => (
+                        <span key={u.key} className="pos-prod-unit-chip" onClick={(e) => { e.stopPropagation(); openPicker(p, u.key); }}>
+                          {u.unit} · {Number(u.price).toLocaleString()} <i>{t("pos.stock")}: {u.stock}</i>
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="pos-product-price">{Number(Math.min(...p.units.map((u) => u.price)) || 0).toLocaleString()}</td>
+                  <td className="pos-product-stock">{p.total_stock.toLocaleString()}</td>
                 </tr>
               ))}
               {availableProducts.length === 0 && <tr><td colSpan={3} className="pos-empty">{t("pos.noProducts")}</td></tr>}
@@ -425,6 +457,17 @@ export default function POS() {
           </div>
         )}
       </Modal>
+
+      {picker && (
+        <UnitPicker
+          key={picker.product_id}
+          title={picker.name}
+          entries={picker.units}
+          initialKey={pickerPreselect}
+          onAdd={addToCart}
+          onClose={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }
